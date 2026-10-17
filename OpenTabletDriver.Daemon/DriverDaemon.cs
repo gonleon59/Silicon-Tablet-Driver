@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using OpenTabletDriver.Desktop;
 using OpenTabletDriver.Desktop.Binding;
 using OpenTabletDriver.Desktop.Contracts;
@@ -52,8 +53,12 @@ namespace OpenTabletDriver.Daemon
                 // only re-initialize pipeline if a relevant device is plugged in
                 if (args.Additions.Any(x => Driver.KnownVendorIDs.Contains(x.VendorID)))
                 {
-                    await DetectTablets();
-                    await SetSettings(Settings);
+                    try
+                    {
+                        await DetectTablets();
+                        await SetSettings(Settings);
+                    }
+                    catch (Exception error) { Log.Exception(error); }
                 }
                 else
                 {
@@ -99,8 +104,12 @@ namespace OpenTabletDriver.Daemon
                     return;
 
                 Log.Write(nameof(DriverDaemon), "Sleep detected...");
-                await DetectTablets();
-                await SetSettings(Settings);
+                try
+                {
+                    await DetectTablets();
+                    await SetSettings(Settings);
+                }
+                catch (Exception error) { Log.Exception(error); }
             };
         }
 
@@ -189,7 +198,7 @@ namespace OpenTabletDriver.Daemon
 
         public async Task<IEnumerable<TabletReference>> DetectTablets()
         {
-            Driver.Detect();
+            lock (settingsGate) Driver.Detect();
             await Task.Run(CheckForProblematicProcesses).ConfigureAwait(false);
 
             foreach (var tablet in Driver.InputDevices)
@@ -204,92 +213,170 @@ namespace OpenTabletDriver.Daemon
             return await GetTablets();
         }
 
-        public Task SetSettings(Settings? settings)
+        private readonly object settingsGate = new();
+        private string settingsToken = Guid.NewGuid().ToString("N");
+
+        private void CheckSettingsToken(string expectedToken)
         {
-            try
+            if (string.IsNullOrEmpty(expectedToken) || expectedToken != settingsToken)
+                throw new InvalidOperationException("Settings changed. Refresh before applying or saving.");
+        }
+
+        private SettingsState CaptureSettingsState() => new(SettingsState.Copy(Settings!), settingsToken);
+
+        public Task<SettingsState> GetSettingsState()
+        {
+            lock (settingsGate) return Task.FromResult(CaptureSettingsState());
+        }
+
+        public Task<SettingsState> ApplySettings(Settings settings, string expectedToken)
+        {
+            lock (settingsGate)
             {
-                foreach (var dev in Driver.InputDevices)
-                    dev.OutputMode?.Dispose();
-
-                Settings = settings ??= Settings.GetDefaults();
-
-                foreach (var dev in Driver.InputDevices)
-                {
-                    var tabletReference = dev.CreateReference();
-                    string group = dev.Properties.Name;
-                    var profile = Settings.Profiles[dev];
-
-                    profile.BindingSettings.MatchSpecifications(dev.Properties.Specifications);
-
-                    dev.OutputMode = profile.OutputMode.Construct<IOutputMode>(tabletReference);
-
-                    if (dev.OutputMode != null)
-                        Log.Write(group, $"Output mode: {profile.OutputMode.Name}");
-
-                    if (dev.OutputMode is AbsoluteOutputMode absoluteMode)
-                    {
-                        if (profile.AbsoluteModeSettings == null)
-                            throw new InvalidOperationException($"{nameof(AbsoluteModeSettings)} not found");
-
-                        SetAbsoluteModeSettings(dev, absoluteMode, profile.AbsoluteModeSettings);
-                        if (absoluteMode.Pointer is IPressureHandler)
-                            LogPressureState(group, profile);
-                        if (absoluteMode.Pointer is ITiltHandler)
-                            LogTiltState(group, profile);
-                        if (absoluteMode.Pointer is IRotationHandler)
-                            LogRotationState(group, profile);
-                    }
-
-                    if (dev.OutputMode is RelativeOutputMode relativeMode)
-                    {
-                        if (profile.RelativeModeSettings == null)
-                            throw new InvalidOperationException($"{nameof(RelativeModeSettings)} not found");
-
-                        SetRelativeModeSettings(dev, relativeMode, profile.RelativeModeSettings);
-                        if (relativeMode.Pointer is IPressureHandler)
-                            LogPressureState(group, profile);
-                        if (relativeMode.Pointer is ITiltHandler)
-                            LogTiltState(group, profile);
-                        if (relativeMode.Pointer is IRotationHandler)
-                            LogRotationState(group, profile);
-                    }
-
-                    if (dev.OutputMode is { } outputMode)
-                    {
-                        outputMode.Tablet = tabletReference;
-                        var bindingHandler = CreateBindingHandler(dev, outputMode, profile.BindingSettings);
-                        SetOutputModeElements(dev, outputMode, profile, bindingHandler);
-
-                        outputMode.DisablePressure = profile.BindingSettings.DisablePressure;
-                        outputMode.DisableTilt = profile.BindingSettings.DisableTilt;
-                        outputMode.DisableRotation = profile.BindingSettings.DisableRotation;
-                    }
-                }
-
-                if (Driver.InputDevices.Length > 0)
-                    Log.Write("Settings", "Driver is enabled.");
-
-                SetToolSettings();
-
-                lastValidSettings = settings;
-                return Task.CompletedTask;
+                CheckSettingsToken(expectedToken);
+                SetSettings(settings);
+                return Task.FromResult(CaptureSettingsState());
             }
-            catch
+        }
+
+        public Task<SettingsState> SaveSettings(Settings settings, string expectedToken)
+        {
+            lock (settingsGate)
             {
+                CheckSettingsToken(expectedToken);
+                var previous = SettingsState.Copy(Settings!);
+                string before = JsonConvert.SerializeObject(previous);
+                var candidate = SettingsState.Copy(settings);
                 try
                 {
-                    SetSettings(lastValidSettings);
-                    Log.Write("Settings", "Failed to apply settings. Reverted to last valid settings.", LogLevel.Error, true);
+                    // The apply callback completes synchronously. Keep legacy RPC writers out
+                    // until both runtime application and the file commit/rollback have finished.
+                    SettingsFileTransaction.SaveAsync(previous, candidate, AppInfo.Current.SettingsFile, value =>
+                    {
+                        ApplySettingsCore(value);
+                        return Task.CompletedTask;
+                    }).GetAwaiter().GetResult();
+                    settingsToken = Guid.NewGuid().ToString("N");
+                }
+                catch (SettingsRollbackException)
+                {
+                    settingsToken = Guid.NewGuid().ToString("N"); // Rollback failed; invalidate every prior snapshot.
+                    throw;
                 }
                 catch
                 {
-                    RecoverSettings(settings);
-                    Log.Write("Settings", "Failed to apply settings. Attempted recovery. Some settings may have been lost.", LogLevel.Error, true);
+                    if (JsonConvert.SerializeObject(Settings) != before) settingsToken = Guid.NewGuid().ToString("N");
+                    throw; // A successful rollback retains the revision so the draft can be retried.
                 }
+                finally { NotifySettingsChanged(); }
+                return Task.FromResult(CaptureSettingsState());
+            }
+        }
 
-                Resynchronize?.Invoke(this, EventArgs.Empty);
+        public Task SetSettings(Settings? settings)
+        {
+            lock (settingsGate)
+            {
+                var previous = lastValidSettings == null ? null : SettingsState.Copy(lastValidSettings);
+                string before = JsonConvert.SerializeObject(previous);
+                try
+                {
+                    ApplySettingsCore(SettingsState.Copy(settings ?? Settings.GetDefaults()));
+                    settingsToken = Guid.NewGuid().ToString("N");
+                }
+                catch (Exception error)
+                {
+                    // One rollback (or initial recovery), never recurse into SetSettings.
+                    try
+                    {
+                        if (previous != null) ApplySettingsCore(previous);
+                        else RecoverSettings(settings);
+                    }
+                    catch (Exception rollback)
+                    {
+                        settingsToken = Guid.NewGuid().ToString("N");
+                        throw new AggregateException("Settings failed to apply and the previous driver state could not be restored.", error, rollback);
+                    }
+                    if (JsonConvert.SerializeObject(Settings) != before) settingsToken = Guid.NewGuid().ToString("N");
+                    throw;
+                }
+                finally { NotifySettingsChanged(); }
                 return Task.CompletedTask;
             }
+        }
+
+        private void NotifySettingsChanged()
+        {
+            try { Resynchronize?.Invoke(this, EventArgs.Empty); }
+            catch (Exception error) { Log.Exception(error); }
+        }
+
+        private void ApplySettingsCore(Settings settings)
+        {
+            foreach (var dev in Driver.InputDevices)
+                dev.OutputMode?.Dispose();
+
+            Settings = settings;
+
+            foreach (var dev in Driver.InputDevices)
+            {
+                var tabletReference = dev.CreateReference();
+                string group = dev.Properties.Name;
+                var profile = Settings.Profiles[dev];
+
+                profile.BindingSettings.MatchSpecifications(dev.Properties.Specifications);
+
+                dev.OutputMode = profile.OutputMode.Construct<IOutputMode>(tabletReference);
+
+                if (dev.OutputMode != null)
+                    Log.Write(group, $"Output mode: {profile.OutputMode.Name}");
+
+                if (dev.OutputMode is AbsoluteOutputMode absoluteMode)
+                {
+                    if (profile.AbsoluteModeSettings == null)
+                        throw new InvalidOperationException($"{nameof(AbsoluteModeSettings)} not found");
+
+                    SetAbsoluteModeSettings(dev, absoluteMode, profile.AbsoluteModeSettings);
+                    if (absoluteMode.Pointer is IPressureHandler)
+                        LogPressureState(group, profile);
+                    if (absoluteMode.Pointer is ITiltHandler)
+                        LogTiltState(group, profile);
+                    if (absoluteMode.Pointer is IRotationHandler)
+                        LogRotationState(group, profile);
+                }
+
+                if (dev.OutputMode is RelativeOutputMode relativeMode)
+                {
+                    if (profile.RelativeModeSettings == null)
+                        throw new InvalidOperationException($"{nameof(RelativeModeSettings)} not found");
+
+                    SetRelativeModeSettings(dev, relativeMode, profile.RelativeModeSettings);
+                    if (relativeMode.Pointer is IPressureHandler)
+                        LogPressureState(group, profile);
+                    if (relativeMode.Pointer is ITiltHandler)
+                        LogTiltState(group, profile);
+                    if (relativeMode.Pointer is IRotationHandler)
+                        LogRotationState(group, profile);
+                }
+
+                if (dev.OutputMode is { } outputMode)
+                {
+                    outputMode.Tablet = tabletReference;
+                    var bindingHandler = CreateBindingHandler(dev, outputMode, profile.BindingSettings);
+                    SetOutputModeElements(dev, outputMode, profile, bindingHandler);
+
+                    outputMode.DisablePressure = profile.BindingSettings.DisablePressure;
+                    outputMode.DisableTilt = profile.BindingSettings.DisableTilt;
+                    outputMode.DisableRotation = profile.BindingSettings.DisableRotation;
+                }
+            }
+
+            if (Driver.InputDevices.Length > 0)
+                Log.Write("Settings", "Driver is enabled.");
+
+            SetToolSettings();
+
+            lastValidSettings = SettingsState.Copy(settings);
         }
 
         private static void LogRotationState(string group, Profile profile)
@@ -352,7 +439,7 @@ namespace OpenTabletDriver.Daemon
                 }
             }
 
-            SetSettings(recoveredSettings);
+            ApplySettingsCore(recoveredSettings);
         }
 
         public async Task ResetSettings()
@@ -385,7 +472,12 @@ namespace OpenTabletDriver.Daemon
                     settings.Revision != AVALONIA_REVISION)
                 {
                     settings.Revision = Settings.GetVersion(); // ensure Revision matches Daemon version
-                    await SetSettings(settings);
+                    try { await SetSettings(settings); }
+                    catch (Exception error) when (lastValidSettings != null)
+                    {
+                        // Preserve the existing file and the recovered state on startup.
+                        Log.Exception(error);
+                    }
                 }
                 else
                 {
@@ -427,6 +519,10 @@ namespace OpenTabletDriver.Daemon
                 MaxPenPressure = dev.Properties.Specifications.Pen.MaxPressure,
             };
 
+            if (OperatingSystem.IsMacOS() && dev.Properties.Name == "Wacom CTH-661" &&
+                !profile.Filters.Any(s => s?.Path == typeof(OpenTabletDriver.Desktop.Touch.BambooPenStabilizer).FullName))
+                profile.Filters.Add(new PluginSettingStore(new OpenTabletDriver.Desktop.Touch.BambooPenStabilizer()));
+
             var elements = (from store in profile.Filters
                             where store is { Enable: true }
                             let filter = store!.Construct<IPositionedPipelineElement<IDeviceReport>>(outputMode.Tablet)
@@ -437,6 +533,11 @@ namespace OpenTabletDriver.Daemon
 
             foreach (var filter in elements)
             {
+                if (filter is OpenTabletDriver.Desktop.Touch.BambooTouchNavigation touch && profile.AbsoluteModeSettings is { } absolute)
+                {
+                    touch.TabletRotation = absolute.Tablet.Rotation;
+                    touch.DisplayIdentifiers = absolute.MappingPreferences?.DisplayIdentifiers ?? [];
+                }
                 var pluginSettings = profile.Filters.First(x => x?.Path == filter.GetType().FullName);
                 if (pluginSettings == null) continue;
 
@@ -446,6 +547,12 @@ namespace OpenTabletDriver.Daemon
 
         private static void SetAbsoluteModeSettings(InputDeviceTree dev, AbsoluteOutputMode absoluteMode, AbsoluteModeSettings settings)
         {
+            if (settings.MappingPreferences is { } preferences && DesktopInterop.VirtualScreen is { } screen)
+            {
+                settings.Display = TabletMappingPreferences.DisplayArea(screen.Displays, preferences.DisplayIdentifiers);
+                settings.Tablet = preferences.TabletArea(dev.Properties.Specifications.Digitizer, settings.Display);
+                settings.LockAspectRatio = preferences.PreserveProportions;
+            }
             string group = dev.Properties.Name;
             absoluteMode.Output = settings.Display.Area;
 
@@ -546,7 +653,7 @@ namespace OpenTabletDriver.Daemon
                     Log.Write(group, "Pen Bindings are configured as drag-only (requires pen pressure to activate)");
             }
 
-            if (settings.AuxButtons.Any(b => b?.Path != null))
+            if (!settings.DisableAuxiliaryButtons && settings.AuxButtons.Any(b => b?.Path != null))
             {
                 SetBindingHandlerCollectionSettings(bindingServiceProvider, settings.AuxButtons, bindingHandler.AuxButtons, tabletReference);
                 Log.Write(group, $"Express Key Bindings: " + string.Join(", ", bindingHandler.AuxButtons.Select(b => b.Value?.Binding)));
@@ -644,19 +751,27 @@ namespace OpenTabletDriver.Daemon
                     if (store is not { Enable: true })
                         continue;
 
-                    var tool = store.Construct<ITool>();
-
-                    if (tool?.Initialize() ?? false)
+                    var tool = store.Construct<ITool>()
+                        ?? throw new InvalidOperationException($"Could not construct {store.Name ?? store.Path} tool.");
+                    try
+                    {
+                        if (!tool.Initialize())
+                            throw new InvalidOperationException($"Failed to initialize {store.Name ?? store.Path} tool.");
                         Tools.Add(tool);
-                    else
-                        Log.Write("Tool", $"Failed to initialize {store.Name} tool.", LogLevel.Error);
+                    }
+                    catch (Exception error)
+                    {
+                        try { tool.Dispose(); }
+                        catch (Exception cleanup) { throw new AggregateException("Tool initialization and cleanup failed.",error,cleanup); }
+                        throw;
+                    }
                 }
             }
         }
 
         public Task<Settings> GetSettings()
         {
-            return Task.FromResult(Settings!);
+            lock (settingsGate) return Task.FromResult(SettingsState.Copy(Settings!));
         }
 
         public Task<IEnumerable<SerializedDeviceEndpoint>> GetDevices()

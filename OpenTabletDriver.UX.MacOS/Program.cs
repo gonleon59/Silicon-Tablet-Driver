@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using OpenTabletDriver.Desktop.Diagnostics;
 
 namespace OpenTabletDriver.UX.MacOS
 {
@@ -7,7 +9,10 @@ namespace OpenTabletDriver.UX.MacOS
         [STAThread]
         public static void Main(string[] args)
         {
-            if (PermissionHelper.HasPermissions())
+            StartupLog.Start("GUI");
+            bool relaunch = args.Contains("--permissions-relaunch");
+            args = args.Where(a => a != "--permissions-relaunch").ToArray();
+            if (PermissionHelper.HasPermissions(args, relaunch))
             {
                 App.Run("OpenTabletDriver.UX.MacOS.Platform, OpenTabletDriver.UX.MacOS", args);
             }

@@ -41,12 +41,12 @@ namespace OpenTabletDriver.UX
 
             saveButton = new Button(async (s, e) => await SaveSettings())
             {
-                Text = "Save"
+                Text = Language.T("Save")
             };
 
             applyButton = new Button(async (s, e) => await ApplySettings())
             {
-                Text = "Apply"
+                Text = Language.T("Apply")
             };
 
             App.Driver.Connected += HandleDaemonConnected;
@@ -103,13 +103,30 @@ namespace OpenTabletDriver.UX
             }
         }
 
+        public bool NativeSettingsReady { get; private set; }
+        public bool OpenSettingsWhenReady { get; set; }
+        public bool BambooConnected { get; private set; }
+        public void ShowSettingsWindow()
+        {
+            if (Native.MacSettingsWindow.Available && !NativeSettingsReady)
+            {
+                // A second launch can arrive before profile synchronization finishes.
+                // Keep the request pending instead of exposing the legacy editor.
+                OpenSettingsWhenReady = true;
+                return;
+            }
+            if (Native.MacSettingsWindow.Show(this)) { Visible=false; return; }
+            ShowAdvancedSettings();
+        }
+        public void ShowAdvancedSettings() { Show(); BringToFront(); }
+
         private const int DEFAULT_CLIENT_WIDTH = 960;
         private const int DEFAULT_CLIENT_HEIGHT = 760;
 
         private readonly MenuBar fullMenu;
         private readonly Placeholder placeholder = new()
         {
-            Text = "Connecting to OpenTabletDriver Daemon...",
+            Text = Language.T("Connecting to OpenTabletDriver Daemon..."),
         };
 
         private TrayIcon? trayIcon;
@@ -194,10 +211,13 @@ namespace OpenTabletDriver.UX
                     App.DaemonWatchdog = null;
                 };
 
-                this.Closing += (sender, e) =>
+                Application.Instance.Terminating += (sender,e) =>
                 {
-                    App.DaemonWatchdog?.Dispose();
-                    App.DaemonWatchdog = null;
+                    App.DaemonWatchdog?.Dispose(); App.DaemonWatchdog=null;
+                };
+                this.Closing += (sender,e) =>
+                {
+                    if (!Native.MacSettingsWindow.Available) { App.DaemonWatchdog?.Dispose(); App.DaemonWatchdog=null; }
                 };
             }
         }
@@ -213,13 +233,13 @@ namespace OpenTabletDriver.UX
 
         private static MenuBar ConstructLimitedMenu()
         {
-            var quitCommand = new Command { MenuText = "Quit", Shortcut = Application.Instance.CommonModifier | Keys.Q };
-            quitCommand.Executed += (sender, e) => Application.Instance.Quit();
+            var quitCommand = new Command { MenuText = Language.T("Quit"), Shortcut = Application.Instance.CommonModifier | Keys.Q };
+            quitCommand.Executed += (sender, e) => Native.MacSettingsWindow.RequestQuit();
 
-            var aboutCommand = new Command { MenuText = "About...", Shortcut = Keys.F1 };
+            var aboutCommand = new Command { MenuText = Language.T("About..."), Shortcut = Keys.F1 };
             aboutCommand.Executed += (sender, e) => App.Current.AboutWindow.Show();
 
-            var wikiUrl = new Command { MenuText = "Open Wiki..." };
+            var wikiUrl = new Command { MenuText = Language.T("Open Wiki...") };
             wikiUrl.Executed += (sender, e) => DesktopInterop.Open(App.WikiUrl);
 
             var menuBar = new MenuBar
@@ -228,7 +248,7 @@ namespace OpenTabletDriver.UX
                 {
                     new ButtonMenuItem
                     {
-                        Text = "&Help",
+                        Text = Language.T("&Help"),
                         Items =
                         {
                             wikiUrl,
@@ -244,78 +264,87 @@ namespace OpenTabletDriver.UX
 
         private MenuBar ConstructMenu()
         {
-            var quitCommand = new Command { MenuText = "Quit", Shortcut = Application.Instance.CommonModifier | Keys.Q };
-            quitCommand.Executed += (sender, e) => Application.Instance.Quit();
+            var quitCommand = new Command { MenuText = Language.T("Quit"), Shortcut = Application.Instance.CommonModifier | Keys.Q };
+            quitCommand.Executed += (sender, e) => Native.MacSettingsWindow.RequestQuit();
 
-            var aboutCommand = new Command { MenuText = "About...", Shortcut = Keys.F1 };
+            var aboutCommand = new Command { MenuText = Language.T("About..."), Shortcut = Keys.F1 };
             aboutCommand.Executed += (sender, e) => App.Current.AboutWindow.Show();
 
-            var resetSettings = new Command { MenuText = "Reset to defaults" };
+            var resetSettings = new Command { MenuText = Language.T("Reset to defaults") };
             resetSettings.Executed += async (sender, e) => await ResetSettingsDialog();
 
-            var loadSettings = new Command { MenuText = "Load settings...", Shortcut = Application.Instance.CommonModifier | Keys.O };
+            var loadSettings = new Command { MenuText = Language.T("Load settings..."), Shortcut = Application.Instance.CommonModifier | Keys.O };
             loadSettings.Executed += async (sender, e) => await LoadSettingsDialog();
 
-            var saveSettingsAs = new Command { MenuText = "Save settings as...", Shortcut = Application.Instance.CommonModifier | Keys.Shift | Keys.S };
+            var saveSettingsAs = new Command { MenuText = Language.T("Save settings as..."), Shortcut = Application.Instance.CommonModifier | Keys.Shift | Keys.S };
             saveSettingsAs.Executed += async (sender, e) => await SaveSettingsDialog();
 
-            var saveSettings = new Command { MenuText = "Save settings", Shortcut = Application.Instance.CommonModifier | Keys.S };
+            var saveSettings = new Command { MenuText = Language.T("Save settings"), Shortcut = Application.Instance.CommonModifier | Keys.S };
             saveSettings.Executed += async (sender, e) => await SaveSettings();
 
-            var applySettings = new Command { MenuText = "Apply settings", Shortcut = Application.Instance.CommonModifier | Keys.Enter };
+            var applySettings = new Command { MenuText = Language.T("Apply settings"), Shortcut = Application.Instance.CommonModifier | Keys.Enter };
             applySettings.Executed += async (sender, e) => await ApplySettings();
 
-            var refreshPresets = new Command { MenuText = "Refresh presets" };
+            var refreshPresets = new Command { MenuText = Language.T("Refresh presets") };
             refreshPresets.Executed += async (sender, e) => await RefreshPresets();
 
-            var savePreset = new Command { MenuText = "Save as preset..." };
+            var savePreset = new Command { MenuText = Language.T("Save as preset...") };
             savePreset.Executed += async (sender, e) => await SavePresetDialog();
 
-            var openPresetsDirectory = new Command { MenuText = "Open presets directory..." };
+            var openPresetsDirectory = new Command { MenuText = Language.T("Open presets directory...") };
             openPresetsDirectory.Executed += async (sender, e) => DesktopInterop.OpenFolder(AppInfo.Current.PresetDirectory);
 
-            var detectTablet = new Command { MenuText = "Detect tablet", Shortcut = Application.Instance.CommonModifier | Keys.D };
+            var detectTablet = new Command { MenuText = Language.T("Detect tablet"), Shortcut = Application.Instance.CommonModifier | Keys.D };
             detectTablet.Executed += async (sender, e) =>
             {
                 AppInfo.Current.ConfigurationDirectory = null; // force recheck on next access
                 await DetectTablet();
             };
 
-            var showTabletDebugger = new Command { MenuText = "Tablet debugger..." };
+            var showTabletDebugger = new Command { MenuText = Language.T("Tablet debugger...") };
             showTabletDebugger.Executed += (sender, e) => App.Current.DebuggerWindow.Show();
 
-            var deviceStringReader = new Command { MenuText = "Device string reader..." };
+            var inputTest = new Command { MenuText = Language.T("Pen and touch test...") };
+            inputTest.Executed += (_, _) => App.Current.InputTestWindow.Show();
+
+            var deviceStringReader = new Command { MenuText = Language.T("Device string reader...") };
             deviceStringReader.Executed += (sender, e) => App.Current.StringReaderWindow.Show();
 
-            var deviceInitSender = new Command { MenuText = "Device init sender..." };
+            var deviceInitSender = new Command { MenuText = Language.T("Device init sender...") };
             deviceInitSender.Executed += (sender, e) => App.Current.InitSenderWindow.Show();
 
-            var pluginManager = new Command { MenuText = "Open Plugin Manager..." };
+            var pluginManager = new Command { MenuText = Language.T("Open Plugin Manager...") };
             pluginManager.Executed += (sender, e) => App.Current.PluginManagerWindow.Show();
 
-            var wikiUrl = new Command { MenuText = "Open Wiki..." };
+            var wikiUrl = new Command { MenuText = Language.T("Open Wiki...") };
             wikiUrl.Executed += (sender, e) => DesktopInterop.Open(App.WikiUrl);
 
-            var showGuide = new Command { MenuText = "Show guide..." };
+            var showGuide = new Command { MenuText = Language.T("Show guide...") };
             showGuide.Executed += (sender, e) => App.Current.StartupGreeterWindow.Show();
 
-            var exportDiagnostics = new Command { MenuText = "Export diagnostics..." };
+            var exportDiagnostics = new Command { MenuText = Language.T("Export diagnostics...") };
             exportDiagnostics.Executed += async (sender, e) => await ExportDiagnostics();
 
-            var exportDiagnosticsToClipboard = new Command { MenuText = "Export diagnostics to Clipboard..." };
+            var exportDiagnosticsToClipboard = new Command { MenuText = Language.T("Export diagnostics to Clipboard...") };
             exportDiagnosticsToClipboard.Executed += async (sender, e) => await ExportDiagnosticsToClipboard();
 
-            var updater = new Command { MenuText = "Check for updates..." };
-            updater.Executed += (sender, e) => App.Current.UpdaterWindow.Show();
+            var updater = new Command { MenuText = Language.T("Check for updates...") };
+            updater.Executed += (sender, e) =>
+            {
+                if (OperatingSystem.IsMacOS())
+                    MessageBox.Show(Language.T("This Bamboo preview is updated manually from its release package."), Language.T("Check for updates..."));
+                else App.Current.UpdaterWindow.Show();
+            };
 
             var menuBar = new MenuBar
             {
                 Items =
                 {
+                    Language.CreateMenu(),
                     // File submenu
                     new ButtonMenuItem
                     {
-                        Text = "&File",
+                        Text = Language.T("&File"),
                         Items =
                         {
                             loadSettings,
@@ -329,12 +358,12 @@ namespace OpenTabletDriver.UX
                             openPresetsDirectory,
                             new ButtonMenuItem
                             {
-                                Text = "Presets",
+                                Text = Language.T("Presets"),
                                 Items =
                                 {
                                     new ButtonMenuItem
                                     {
-                                        Text = "No presets loaded",
+                                        Text = Language.T("No presets loaded"),
                                         Enabled = false
                                     }
                                 }
@@ -344,11 +373,12 @@ namespace OpenTabletDriver.UX
                     // Tablets submenu
                     new ButtonMenuItem
                     {
-                        Text = "Tablets",
+                        Text = Language.T("Tablets"),
                         Items =
                         {
                             detectTablet,
                             showTabletDebugger,
+                            inputTest,
                             deviceStringReader,
                             deviceInitSender,
                         }
@@ -356,7 +386,7 @@ namespace OpenTabletDriver.UX
                     // Plugins submenu
                     new ButtonMenuItem
                     {
-                        Text = "Plugins",
+                        Text = Language.T("Plugins"),
                         Items =
                         {
                             pluginManager
@@ -364,7 +394,7 @@ namespace OpenTabletDriver.UX
                     },
                     new ButtonMenuItem
                     {
-                        Text = "&Help",
+                        Text = Language.T("&Help"),
                         Items =
                         {
                             wikiUrl,
@@ -387,7 +417,7 @@ namespace OpenTabletDriver.UX
                 case PluginPlatform.Windows:
                 case PluginPlatform.MacOS:
                 {
-                    menuBar.Items.GetSubmenu("&Help").Items.Add(updater);
+                    menuBar.Items.GetSubmenu(Language.T("&Help")).Items.Add(updater);
                     break;
                 }
             }
@@ -418,7 +448,10 @@ namespace OpenTabletDriver.UX
             Debug.Assert(App.Driver.IsConnected);
             // Hook events after the instance is (re)instantiated
             Log.Output += LogToDriver;
-            App.Driver.TabletsChanged += (sender, tablet) => SetTitle(tablet);
+            App.Driver.TabletsChanged += (sender, tablet) =>
+            {
+                var list=tablet.ToArray(); BambooConnected=list.Any(t=>t.Properties.Name=="Wacom CTH-661"); SetTitle(list);
+            };
 
             // Load full menu
             this.Menu = fullMenu;
@@ -450,6 +483,8 @@ namespace OpenTabletDriver.UX
                     Spacing = 5,
                     Items =
                     {
+                        Language.CreateButton(),
+                        new Button((_, _) => App.Current.InputTestWindow.Show()) { Text = Language.T("Pen and touch test") },
                         saveButton,
                         applyButton,
                     }
@@ -460,11 +495,14 @@ namespace OpenTabletDriver.UX
             await RefreshPresets();
 
             // Update title to new instance
-            if (await App.Driver.Instance.GetTablets() is IEnumerable<TabletReference> tablets)
-                SetTitle(tablets);
+            var tablets=(await App.Driver.Instance.GetTablets()).ToArray();
+            SetTitle(tablets);
 
             // Having a mismatch between the version of the daemon and the application will cause issues
             MatchDaemonVersion();
+            BambooConnected=tablets?.Any(t=>t.Properties.Name=="Wacom CTH-661") ?? false;
+            NativeSettingsReady=true;
+            if (OpenSettingsWhenReady) { OpenSettingsWhenReady=false; ShowSettingsWindow(); }
         });
 
         private Button saveButton;
@@ -478,6 +516,8 @@ namespace OpenTabletDriver.UX
 
         private void HandleDaemonDisconnected(object? sender, EventArgs e)
         {
+            NativeSettingsReady=false;
+            BambooConnected=false;
             Log.Output -= LogToDriver;
             if (SilenceDaemonShutdown)
                 return;
@@ -496,8 +536,11 @@ namespace OpenTabletDriver.UX
         private static async Task ResetSettings()
         {
             Debug.Assert(App.Driver.IsConnected);
-            await App.Driver.Instance.ResetSettings();
-            await SyncSettings();
+            await Native.SettingsOperations.RunAsync(async () =>
+            {
+                await App.Driver.Instance.ResetSettings();
+                await SyncSettingsCore();
+            });
         }
 
         private static async Task ResetSettingsDialog()
@@ -506,10 +549,27 @@ namespace OpenTabletDriver.UX
                 await ResetSettings();
         }
 
-        private static async Task SyncSettings()
+        private static Task SyncSettings() => Native.SettingsOperations.RunAsync(SyncSettingsCore);
+
+        private static async Task SyncSettingsCore()
         {
             Debug.Assert(App.Driver.IsConnected);
-            App.Current.Settings = await App.Driver.Instance.GetSettings();
+            App.Current.SetSettingsState(await App.Driver.Instance.GetSettingsState());
+        }
+
+        private static async Task ChangeSettings(Func<Task> operation)
+        {
+            await Native.SettingsOperations.RunAsync(async () =>
+            {
+                try { await operation(); }
+                catch (Exception error)
+                {
+                    Log.Exception(error);
+                    if (App.Driver.IsConnected)
+                        try { await SyncSettingsCore(); } catch (Exception syncError) { Log.Exception(syncError); }
+                    error.ShowMessageBox();
+                }
+            });
         }
 
         private async Task LoadSettingsDialog()
@@ -529,8 +589,8 @@ namespace OpenTabletDriver.UX
                     {
                         if (Settings.TryDeserialize(file, out var settings))
                         {
-                            App.Current.Settings = settings;
-                            await App.Driver.Instance!.SetSettings(settings);
+                            await ChangeSettings(async () => App.Current.SetSettingsState(
+                                await App.Driver.Instance!.ApplySettings(settings, App.Current.SettingsToken)));
                         }
                         else
                         {
@@ -560,8 +620,12 @@ namespace OpenTabletDriver.UX
                     var file = new FileInfo(fileDialog.FileName);
                     if (App.Current.Settings is Settings settings)
                     {
-                        settings.Serialize(file);
-                        await ApplySettings();
+                        await ChangeSettings(async () =>
+                        {
+                            var state=await App.Driver.Instance!.ApplySettings(SettingsState.Copy(App.Current.Settings),App.Current.SettingsToken);
+                            state.Settings.Serialize(file);
+                            App.Current.SetSettingsState(state);
+                        });
                     }
                     break;
             }
@@ -569,6 +633,7 @@ namespace OpenTabletDriver.UX
 
         private async Task SaveSettings()
         {
+            if (Native.MacSettingsWindow.TrySave()) return;
             DisableApplySaveButtons();
 
             Debug.Assert(App.Driver.IsConnected, "Save should be disabled when no driver is connected");
@@ -587,9 +652,8 @@ namespace OpenTabletDriver.UX
                         return;
                 }
 
-                var appInfo = await App.Driver.Instance.GetApplicationInfo();
-                settings.Serialize(new FileInfo(appInfo.SettingsFile));
-                await ApplySettings();
+                await ChangeSettings(async () => App.Current.SetSettingsState(
+                    await App.Driver.Instance.SaveSettings(SettingsState.Copy(App.Current.Settings),App.Current.SettingsToken)));
             }
         }
 
@@ -619,6 +683,7 @@ namespace OpenTabletDriver.UX
 
         private async Task ApplySettings()
         {
+            if (Native.MacSettingsWindow.TrySave()) return;
             DisableApplySaveButtons(false);
 
             Debug.Assert(App.Driver.IsConnected, "Apply should be disabled when no driver is connected");
@@ -626,7 +691,8 @@ namespace OpenTabletDriver.UX
             try
             {
                 if (App.Current.Settings is Settings settings)
-                    await App.Driver.Instance.SetSettings(settings);
+                    await ChangeSettings(async () => App.Current.SetSettingsState(
+                        await App.Driver.Instance.ApplySettings(SettingsState.Copy(App.Current.Settings),App.Current.SettingsToken)));
             }
             catch (StreamJsonRpc.RemoteInvocationException riex) when (riex.ErrorData is JObject err)
             {
@@ -654,7 +720,7 @@ namespace OpenTabletDriver.UX
 
             // Update File submenu
             var presets = AppInfo.PresetManager.GetPresets();
-            var presetsMenu = fullMenu.Items.GetSubmenu("&File").Items.GetSubmenu("Presets") as ButtonMenuItem;
+            var presetsMenu = fullMenu.Items.GetSubmenu(Language.T("&File")).Items.GetSubmenu(Language.T("Presets")) as ButtonMenuItem;
             presetsMenu.Items.Clear();
 
             if (presets.Count != 0)
@@ -674,7 +740,7 @@ namespace OpenTabletDriver.UX
             {
                 var emptyPresetsItem = new ButtonMenuItem
                 {
-                    Text = "No presets loaded",
+                    Text = Language.T("No presets loaded"),
                     Enabled = false
                 };
 
@@ -706,7 +772,7 @@ namespace OpenTabletDriver.UX
             }
         }
 
-        public static void PresetButtonHandler(object? sender, EventArgs e)
+        public static async void PresetButtonHandler(object? sender, EventArgs e)
         {
             var buttonMenuItem = sender as ButtonMenuItem;
             Debug.Assert(buttonMenuItem != null, "Invalid sender");
@@ -716,16 +782,22 @@ namespace OpenTabletDriver.UX
             var preset = AppInfo.PresetManager.FindPreset(presetName);
             Debug.Assert(preset != null, "It should be impossible to select a preset that doesn't exist");
 
-            App.Current.Settings = preset.Settings;
-            App.Driver.Instance.SetSettings(App.Current.Settings);
-            Log.Write("Settings", $"Applied preset '{preset.Name}'");
+            await ChangeSettings(async () =>
+            {
+                App.Current.SetSettingsState(await App.Driver.Instance.ApplySettings(SettingsState.Copy(preset.Settings),App.Current.SettingsToken));
+                Log.Write("Settings", $"Applied preset '{preset.Name}'");
+            });
         }
 
         private static async Task DetectTablet()
         {
             Debug.Assert(App.Driver.IsConnected, "It should not be possible to request tablet detection when daemon isn't connected");
-            await App.Driver.Instance.DetectTablets();
-            await App.Driver.Instance.SetSettings(await App.Driver.Instance.GetSettings());
+            await ChangeSettings(async () =>
+            {
+                await App.Driver.Instance.DetectTablets();
+                var state=await App.Driver.Instance.GetSettingsState();
+                App.Current.SetSettingsState(await App.Driver.Instance.ApplySettings(state.Settings,state.Token));
+            });
         }
 
         private readonly string _diagnosticsPrefix = $"Diagnostics-{App.Version.Replace(".", "")}";
@@ -825,6 +897,13 @@ namespace OpenTabletDriver.UX
 
         protected override void OnClosing(CancelEventArgs e)
         {
+            if (Native.MacSettingsWindow.Available)
+            {
+                // Advanced settings is another window of the menu-bar app, not its lifetime owner.
+                e.Cancel=true;
+                Visible=false;
+                return;
+            }
             App.Driver.Disconnected -= HandleDaemonDisconnected;
             base.OnClosing(e);
         }

@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using Eto.Drawing;
 using Eto.Forms;
 using OpenTabletDriver.Plugin;
+using OpenTabletDriver.Desktop.Diagnostics;
+using OpenTabletDriver.Desktop.Interop;
 using OpenTabletDriver.Plugin.Logging;
 using OpenTabletDriver.UX.Tools;
 
@@ -32,16 +34,20 @@ namespace OpenTabletDriver.UX.Controls
                 Items =
                 {
                     filterSelector,
+                    new Button(async (_, _) => await SupportDiagnostics.SaveAsync(this))
+                    { Text = Language.T("Save diagnostics") },
+                    new Button((sender, e) => DesktopInterop.OpenFolder(StartupLog.DirectoryPath))
+                    { Text = Language.T("Open log folder") },
                     new Button((sender, e) => Copy(this.messageStore))
                     {
-                        Text = "Copy All"
+                        Text = Language.T("Copy All")
                     }
                 }
             };
 
             var copyCommand = new Command((sender, e) => Copy(messageList.SelectedItems))
             {
-                MenuText = "Copy"
+                MenuText = Language.T("Copy")
             };
 
             messageList.ContextMenu = new ContextMenu

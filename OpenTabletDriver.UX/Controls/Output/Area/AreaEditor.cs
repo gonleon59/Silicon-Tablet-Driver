@@ -43,7 +43,7 @@ namespace OpenTabletDriver.UX.Controls.Output.Area
                                 {
                                     Control = widthGroup = new UnitGroup
                                     {
-                                        Text = "Width",
+                                        Text = Language.T("Width"),
                                         Unit = Unit,
                                         ToolTip = $"Area width in {Unit}",
                                         Orientation = Orientation.Horizontal,
@@ -54,7 +54,7 @@ namespace OpenTabletDriver.UX.Controls.Output.Area
                                 {
                                     Control = heightGroup = new UnitGroup
                                     {
-                                        Text = "Height",
+                                        Text = Language.T("Height"),
                                         Unit = Unit,
                                         ToolTip = $"Area height in {Unit}",
                                         Orientation = Orientation.Horizontal,
@@ -121,7 +121,7 @@ namespace OpenTabletDriver.UX.Controls.Output.Area
 
         private BooleanCommand lockToUsableArea = new BooleanCommand
         {
-            MenuText = "Lock to usable area"
+            MenuText = Language.T("Lock to usable area")
         };
 
         private UnitGroup widthGroup, heightGroup, xGroup, yGroup;
@@ -180,32 +180,32 @@ namespace OpenTabletDriver.UX.Controls.Output.Area
                 {
                     new ButtonMenuItem
                     {
-                        Text = "Align",
+                        Text = Language.T("Align"),
                         Items =
                         {
                             new ActionCommand
                             {
-                                MenuText = "Left",
+                                MenuText = Language.T("Left"),
                                 Action = () => Area!.X = GetAreaCenterOffset().X
                             },
                             new ActionCommand
                             {
-                                MenuText = "Right",
+                                MenuText = Language.T("Right"),
                                 Action = () => Area!.X = FullAreaBounds!.Value.Width - GetAreaCenterOffset().X
                             },
                             new ActionCommand
                             {
-                                MenuText = "Top",
+                                MenuText = Language.T("Top"),
                                 Action = () => Area!.Y = GetAreaCenterOffset().Y
                             },
                             new ActionCommand
                             {
-                                MenuText = "Bottom",
+                                MenuText = Language.T("Bottom"),
                                 Action = () => Area!.Y = FullAreaBounds!.Value.Height - GetAreaCenterOffset().Y
                             },
                             new ActionCommand
                             {
-                                MenuText = "Center",
+                                MenuText = Language.T("Center"),
                                 Action = () =>
                                 {
                                     Area!.X = FullAreaBounds!.Value.Center.X;
@@ -216,21 +216,21 @@ namespace OpenTabletDriver.UX.Controls.Output.Area
                     },
                     new ButtonMenuItem
                     {
-                        Text = "Resize",
+                        Text = Language.T("Resize"),
                     },
                     new ButtonMenuItem
                     {
-                        Text = "Flip",
+                        Text = Language.T("Flip"),
                         Items =
                         {
                             new ActionCommand
                             {
-                                MenuText = "Horizontal",
+                                MenuText = Language.T("Horizontal"),
                                 Action = () => Area!.X = FullAreaBounds!.Value.Width - Area.X
                             },
                             new ActionCommand
                             {
-                                MenuText = "Vertical",
+                                MenuText = Language.T("Vertical"),
                                 Action = () => Area!.Y = FullAreaBounds!.Value.Height - Area.Y
                             }
                         }

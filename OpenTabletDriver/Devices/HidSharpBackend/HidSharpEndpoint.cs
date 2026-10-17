@@ -11,12 +11,14 @@ namespace OpenTabletDriver.Devices.HidSharpBackend
 {
     public class HidSharpEndpoint : IDeviceEndpoint
     {
-        internal HidSharpEndpoint(HidDevice device)
+        internal HidSharpEndpoint(HidDevice device, PluginPlatform? platform = null)
         {
             this.device = device;
+            this.platform = platform ?? SystemInterop.CurrentPlatform;
         }
 
-        private HidDevice device;
+        private readonly HidDevice device;
+        private readonly PluginPlatform platform;
 
         public int ProductID => device.ProductID;
         public int VendorID => device.VendorID;
@@ -30,17 +32,17 @@ namespace OpenTabletDriver.Devices.HidSharpBackend
         public string SerialNumber => device.SafeGet(d => d.GetSerialNumber(), string.Empty);
         public string DevicePath => device.SafeGet(d => d.DevicePath, "Invalid Device Path");
         public bool CanOpen => device.SafeGet(d => d.CanOpen, false);
-        public IDictionary<string, string> DeviceAttributes => GetDeviceAttributes(DevicePath, () => device.GetReportDescriptor());
+        public IDictionary<string, string> DeviceAttributes => GetDeviceAttributes(platform, DevicePath, () => device.GetReportDescriptor());
 
         public IDeviceEndpointStream Open() => device.TryOpen(out var stream) ? new HidSharpEndpointStream(stream) : throw new InvalidOperationException("Unable to open device stream");
         public string GetDeviceString(byte index) => device.GetDeviceString(index);
-        public void OpenAndSendFeatureInit(byte[] initData) => device.Open().SetFeature(initData);
-        public void OpenAndSendOutputInit(byte[] initData) => device.Open().Write(initData);
+        public void OpenAndSendFeatureInit(byte[] initData) { using var stream = device.Open(); stream.SetFeature(initData); }
+        public void OpenAndSendOutputInit(byte[] initData) { using var stream = device.Open(); stream.Write(initData); }
 
-        private static Dictionary<string, string> GetDeviceAttributes(string devicePath, Func<ReportDescriptor> reportDescriptorFunc)
+        private static Dictionary<string, string> GetDeviceAttributes(PluginPlatform platform, string devicePath, Func<ReportDescriptor> reportDescriptorFunc)
         {
             var deviceAttributes = new Dictionary<string, string>();
-            switch (SystemInterop.CurrentPlatform)
+            switch (platform)
             {
                 case PluginPlatform.Windows:
                     GetDeviceAttributesWindows(devicePath, deviceAttributes);

@@ -17,6 +17,7 @@ namespace OpenTabletDriver.UX.Controls.Output
     {
         public OutputModeEditor()
         {
+            mappingPanel = new TabletMappingPanel(() => Profile);
             this.Content = new StackLayout
             {
                 Padding = 5,
@@ -24,6 +25,7 @@ namespace OpenTabletDriver.UX.Controls.Output
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
                 Items =
                 {
+                    mappingPanel,
                     new StackLayoutItem(editorContainer, true),
                     new StackLayoutItem(outputModeSelector, HorizontalAlignment.Left)
                 }
@@ -71,6 +73,7 @@ namespace OpenTabletDriver.UX.Controls.Output
             UpdateTablet();
             UpdateOutputMode(Profile?.OutputMode);
             outputModeSelector.Enabled = Profile != null;
+            mappingPanel.Refresh();
         }
 
         public BindableBinding<OutputModeEditor, Profile?> ProfileBinding
@@ -87,18 +90,20 @@ namespace OpenTabletDriver.UX.Controls.Output
             }
         }
 
+        private readonly TabletMappingPanel mappingPanel;
         private Panel editorContainer = new Panel();
         private AbsoluteModeEditor absoluteModeEditor = new AbsoluteModeEditor();
         private RelativeModeEditor relativeModeEditor = new RelativeModeEditor();
         private TypeDropDown<IOutputMode> outputModeSelector = new TypeDropDown<IOutputMode> { Width = 300 };
-        private Label outputModeUnsupported = new Label { Text = "No supported output mode selected.", TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        private Label tabletUnavailable = new Label { Text = "No tablets were detected or selected.", TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        private Label outputModeUnsupported = new Label { Text = Language.T("No supported output mode selected."), TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        private Label tabletUnavailable = new Label { Text = Language.T("No tablets were detected or selected."), TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
 
         public void SetTabletSize(TabletReference tablet)
         {
             var tabletAreaEditor = absoluteModeEditor.tabletAreaEditor;
             if (tablet.Properties.Specifications.Digitizer is DigitizerSpecifications digitizer)
             {
+                mappingPanel.SetTablet(digitizer);
                 tabletAreaEditor.AreaBounds =
                 [
                     new RectangleF(0, 0, digitizer.Width, digitizer.Height),
@@ -129,6 +134,7 @@ namespace OpenTabletDriver.UX.Controls.Output
                 showRelative = outputMode.IsSubclassOf(typeof(RelativeOutputMode));
             }
 
+            mappingPanel.Visible = showAbsolute;
             if (showAbsolute)
                 editorContainer.Content = absoluteModeEditor;
             else if (showRelative)

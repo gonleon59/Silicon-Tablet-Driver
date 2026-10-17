@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using OpenTabletDriver.Desktop;
+using OpenTabletDriver.Desktop.Diagnostics;
 using OpenTabletDriver.Desktop.RPC;
 using OpenTabletDriver.Plugin;
 using OpenTabletDriver.Plugin.Components;
@@ -27,6 +28,7 @@ namespace OpenTabletDriver.Daemon
 
         static async Task Main(string[] args)
         {
+            StartupLog.Start("Daemon");
             Log.Output += (sender, message) =>
             {
                 var formattedMessage = Log.GetStringFormat(message);

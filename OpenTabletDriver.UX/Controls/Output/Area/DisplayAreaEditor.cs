@@ -13,7 +13,7 @@ namespace OpenTabletDriver.UX.Controls.Output
         private Action triggerAspectRatioLock;
         public DisplayAreaEditor(Action triggerAspectRatioLock)
         {
-            this.ToolTip = "You can right click the area editor to set the area to a display, adjust alignment, or resize the area.";
+            this.ToolTip = Language.T("You can right click the area editor to set the area to a display, adjust alignment, or resize the area.");
             this.triggerAspectRatioLock = triggerAspectRatioLock;
         }
 
@@ -21,10 +21,10 @@ namespace OpenTabletDriver.UX.Controls.Output
         {
             base.CreateMenu();
 
-            this.ContextMenu.Items.GetSubmenu("Resize").Items.AddRange([
+            this.ContextMenu.Items.GetSubmenu(Language.T("Resize")).Items.AddRange([
                 new ActionCommand
                 {
-                    MenuText = "Full area",
+                    MenuText = Language.T("Full area"),
                     Action = () =>
                     {
                         handlingDisplayAreaResize = true;
@@ -40,7 +40,7 @@ namespace OpenTabletDriver.UX.Controls.Output
                 },
                 new ActionCommand
                 {
-                    MenuText = "Quarter area",
+                    MenuText = Language.T("Quarter area"),
                     Action = () =>
                     {
                         handlingDisplayAreaResize = true;

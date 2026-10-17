@@ -19,56 +19,62 @@ namespace OpenTabletDriver.UX.Controls
 
             control.Pages.Add(new TabPage
             {
-                Text = "Output",
+                Text = Language.T("Output"),
                 Content = outputModeEditor = new()
             });
 
             control.Pages.Add(new TabPage
             {
-                Text = "Filters",
+                Text = Language.T("Touch and buttons"),
+                Content = bambooSettings = new BambooSettingsPanel(() => Profile)
+            });
+
+            control.Pages.Add(new TabPage
+            {
+                Text = Language.T("Filters"),
                 Padding = 5,
                 Content = filterEditor = new()
             });
 
             control.Pages.Add(new TabPage
             {
-                Text = "Pen Settings",
+                Text = Language.T("Pen Settings"),
                 Content = penBindingEditor = new PenBindingEditor()
             });
 
             control.Pages.Add(new TabPage
             {
-                Text = "Auxiliary Settings",
+                Text = Language.T("Auxiliary Settings"),
                 Content = auxBindingEditor = new AuxiliaryBindingEditor()
             });
 
             control.Pages.Add(new TabPage
             {
                 ID = "mouse",
-                Text = "Mouse Settings",
+                Text = Language.T("Mouse Settings"),
                 Content = mouseBindingEditor = new MouseBindingEditor()
             });
 
             control.Pages.Add(new TabPage
             {
-                Text = "Tools",
+                Text = Language.T("Tools"),
                 Padding = 5,
                 Content = toolEditor = new()
             });
 
             control.Pages.Add(new TabPage
             {
-                Text = "Info",
+                Text = Language.T("Info"),
                 Padding = 5,
                 Content = placeholder = new Placeholder
                 {
-                    Text = "No tablets are detected."
+                    Text = Language.T("No tablets are detected.")
                 }
             });
 
             control.Pages.Add(new TabPage
             {
-                Text = "Console",
+                Text = Language.T("Console"),
                 Padding = 5,
                 Content = logView = new()
             });
@@ -96,6 +102,7 @@ namespace OpenTabletDriver.UX.Controls
         private TabControl tabControl;
         private Placeholder placeholder;
         private LogView logView;
+        private BambooSettingsPanel bambooSettings;
         private OutputModeEditor outputModeEditor;
         private BindingEditor penBindingEditor, auxBindingEditor, mouseBindingEditor;
         private List<BindingEditor> wheelBindingEditors = [];
@@ -135,6 +142,8 @@ namespace OpenTabletDriver.UX.Controls
                 SetPageVisibility(placeholder, false);
                 SetPageVisibility(outputModeEditor, true);
                 SetPageVisibility(filterEditor, true);
+                SetPageVisibility(bambooSettings, OperatingSystem.IsMacOS() && tablet.Properties.Name == "Wacom CTH-661");
+                bambooSettings.Refresh();
                 SetPageVisibility(penBindingEditor, true);
                 SetPageVisibility(auxBindingEditor, tablet.Properties.Specifications.AuxiliaryButtons != null);
 
@@ -152,6 +161,7 @@ namespace OpenTabletDriver.UX.Controls
                 SetPageVisibility(placeholder, true);
                 SetPageVisibility(outputModeEditor, false);
                 SetPageVisibility(filterEditor, false);
+                SetPageVisibility(bambooSettings, false);
                 SetPageVisibility(penBindingEditor, false);
                 SetPageVisibility(auxBindingEditor, false);
                 foreach (var controlItem in wheelBindingEditors)

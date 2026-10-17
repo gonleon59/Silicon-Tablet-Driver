@@ -25,3 +25,11 @@ BenchmarkDotNet.Artifacts/
 # Nix environment
 [Rr]esult
 .data/
+
+# Local Bamboo builds and diagnostics
+/dist-*/
+/release-artifacts/
+*.jsonl
+*.p12
+*.pfx
+*.key

@@ -13,7 +13,7 @@ namespace OpenTabletDriver.Tests
         public void DeviceAttributes_ExtractsInterfaceNumber_OnLinux(string devicePath, string expectedInterface)
         {
             var fakeDevice = new FakeHidDevice().WithDevicePath(devicePath);
-            var endpoint = new HidSharpEndpoint(fakeDevice);
+            var endpoint = new HidSharpEndpoint(fakeDevice, OpenTabletDriver.Plugin.PluginPlatform.Linux);
 
             var attributes = endpoint.DeviceAttributes;
 
@@ -32,7 +32,7 @@ namespace OpenTabletDriver.Tests
         public void DeviceAttributes_HandlesVariousUsbHubPaths_OnLinux(string devicePath, string expectedInterface)
         {
             var fakeDevice = new FakeHidDevice().WithDevicePath(devicePath);
-            var endpoint = new HidSharpEndpoint(fakeDevice);
+            var endpoint = new HidSharpEndpoint(fakeDevice, OpenTabletDriver.Plugin.PluginPlatform.Linux);
 
             var attributes = endpoint.DeviceAttributes;
 
@@ -48,7 +48,7 @@ namespace OpenTabletDriver.Tests
         public void DeviceAttributes_DoesNotAddInterfaceNumber_ForInvalidPath_OnLinux(string devicePath)
         {
             var fakeDevice = new FakeHidDevice().WithDevicePath(devicePath);
-            var endpoint = new HidSharpEndpoint(fakeDevice);
+            var endpoint = new HidSharpEndpoint(fakeDevice, OpenTabletDriver.Plugin.PluginPlatform.Linux);
 
             var attributes = endpoint.DeviceAttributes;
 
@@ -61,7 +61,7 @@ namespace OpenTabletDriver.Tests
         public void DeviceAttributes_HandlesMultiDigitPortNumbers_OnLinux(string devicePath, string expectedInterface)
         {
             var fakeDevice = new FakeHidDevice().WithDevicePath(devicePath);
-            var endpoint = new HidSharpEndpoint(fakeDevice);
+            var endpoint = new HidSharpEndpoint(fakeDevice, OpenTabletDriver.Plugin.PluginPlatform.Linux);
 
             var attributes = endpoint.DeviceAttributes;
 

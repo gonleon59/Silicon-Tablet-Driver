@@ -316,6 +316,10 @@ build() {
   if [ "${SINGLE_FILE}" == "true" ]; then
     options+=( -p:PublishSingleFile=true )
   fi
+  if [[ "${NET_RUNTIME}" =~ ^osx-.*$ ]]; then
+    # The packaging script builds the final app; avoid Eto producing a duplicate app.
+    options+=( -p:MacBuildBundle=false )
+  fi
   if [ "${SIGNED}" == "false" ] && [[ "${NET_RUNTIME}" =~ ^osx-.*$ ]]; then
     options+=( /p:_EnableMacOSCodeSign=false )
   fi
@@ -358,9 +362,9 @@ create_binary_tarball() {
 
   local last_pwd="${PWD}"
 
-  output="$(readlink -f "${output}")"
+  output="$(cd "$(dirname "${output}")" && pwd)/$(basename "${output}")"
   cd "${source}/.."
-  tar -czf "${output}" "$(basename ${source})"
+  tar -czf "${output}" "$(basename "${source}")"
 
   cd "${last_pwd}"
 }
@@ -369,10 +373,10 @@ move_to_nested() {
   local source="${1}"
   local nested="${2}"
 
-  local contents="$(echo "${source}"/*)"
+  local contents=("${source}"/*)
   echo "Moving ${source} to ${nested}..."
   mkdir -p "${nested}"
-  mv ${contents} "${nested}"
+  mv "${contents[@]}" "${nested}"
 }
 
 copy_pixmap_assets() {

@@ -58,19 +58,19 @@
       "VendorID": 1386,
       "ProductID": 211,
       "InputReportLength": 20,
-      "ReportParser": "OpenTabletDriver.Configurations.Parsers.Wacom.BambooV2.BambooV2AuxReportParser"
+      "ReportParser": "OpenTabletDriver.Configurations.Parsers.Wacom.BambooV2.BambooTouchReportParser"
     },
     {
       "VendorID": 1386,
       "ProductID": 216,
       "InputReportLength": 20,
-      "ReportParser": "OpenTabletDriver.Configurations.Parsers.Wacom.BambooV2.BambooV2AuxReportParser"
+      "ReportParser": "OpenTabletDriver.Configurations.Parsers.Wacom.BambooV2.BambooTouchReportParser"
     },
     {
       "VendorID": 1386,
       "ProductID": 219,
       "InputReportLength": 20,
-      "ReportParser": "OpenTabletDriver.Configurations.Parsers.Wacom.BambooV2.BambooV2AuxReportParser"
+      "ReportParser": "OpenTabletDriver.Configurations.Parsers.Wacom.BambooV2.BambooTouchReportParser"
     }
   ]
 }

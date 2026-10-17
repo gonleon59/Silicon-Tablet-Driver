@@ -1,6 +1,8 @@
 using System;
 using Newtonsoft.Json;
 using OpenTabletDriver.Desktop.Output;
+using OpenTabletDriver.Desktop.Binding;
+using OpenTabletDriver.Desktop.Touch;
 using OpenTabletDriver.Desktop.Reflection;
 using OpenTabletDriver.Interop;
 using OpenTabletDriver.Plugin;
@@ -66,7 +68,7 @@ namespace OpenTabletDriver.Desktop.Profiles
 
         public static Profile GetDefaults(TabletReference tablet)
         {
-            return new Profile
+            var profile = new Profile
             {
                 Tablet = tablet.Properties.Name,
                 OutputMode = new PluginSettingStore(DefaultOutputModeType),
@@ -74,6 +76,18 @@ namespace OpenTabletDriver.Desktop.Profiles
                 RelativeModeSettings = RelativeModeSettings.GetDefaults(),
                 BindingSettings = BindingSettings.GetDefaults(tablet.Properties.Specifications)
             };
+            if (OperatingSystem.IsMacOS() && profile.Tablet == "Wacom CTH-661")
+            {
+                profile.Filters.Add(new PluginSettingStore(new BambooTouchNavigation()));
+                profile.Filters.Add(new PluginSettingStore(new BambooPenStabilizer()));
+                profile.AbsoluteModeSettings!.MappingPreferences = new TabletMappingPreferences();
+                if (profile.BindingSettings.PenButtons.Count > 1)
+                    profile.BindingSettings.PenButtons[1] = new PluginSettingStore(new DoubleClickBinding());
+                string[] shortcuts = ["Application+LeftBracket", "Application+RightBracket", "Control+Up", "F11"];
+                for (int i = 0; i < Math.Min(shortcuts.Length, profile.BindingSettings.AuxButtons.Count); i++)
+                    profile.BindingSettings.AuxButtons[i] = new PluginSettingStore(new MultiKeyBinding { Keys = shortcuts[i] });
+            }
+            return profile;
         }
     }
 }

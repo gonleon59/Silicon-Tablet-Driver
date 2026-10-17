@@ -10,6 +10,7 @@ namespace OpenTabletDriver.Native.OSX.IOkit
         public static extern IOHIDAccessType IOHIDCheckAccess(IOHIDRequestType requestType);
 
         [DllImport(libiokiot)]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool IOHIDRequestAccess(IOHIDRequestType requestType);
     }
 }

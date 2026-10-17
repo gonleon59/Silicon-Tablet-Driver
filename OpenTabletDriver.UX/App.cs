@@ -1,4 +1,5 @@
 using System;
+using OpenTabletDriver.Desktop.Diagnostics;
 using System.CommandLine;
 using System.ComponentModel;
 using System.IO;
@@ -55,8 +56,11 @@ namespace OpenTabletDriver.UX
         private static void RunInternal(string platform, CommandLineOptions options)
         {
             var app = new Application(platform);
+            app.UnhandledException += ShowUnhandledException;
             var mainForm = new MainForm();
-            if (options.StartMinimized)
+            bool nativeSettings=Native.MacSettingsWindow.Available;
+            mainForm.OpenSettingsWhenReady=nativeSettings && !options.StartMinimized;
+            if (options.StartMinimized && !nativeSettings)
             {
                 mainForm.WindowState = WindowState.Minimized;
                 if (EnableTrayIcon)
@@ -69,10 +73,10 @@ namespace OpenTabletDriver.UX
                 }
             }
 
-            mainForm.SkipUpdate = options.SkipUpdate;
-            mainForm.Closing += Current.HandleClosing;
+            // A fork must not automatically offer replacement with upstream binaries.
+            mainForm.SkipUpdate = options.SkipUpdate || OperatingSystem.IsMacOS();
+            if (!nativeSettings) mainForm.Closing += Current.HandleClosing;
 
-            app.UnhandledException += ShowUnhandledException;
             app.Terminating += async (sender, args) => await Current.Canceler.CancelAsync();
 
             Task.Run(async () =>
@@ -92,15 +96,14 @@ namespace OpenTabletDriver.UX
 
                     app.AsyncInvoke(() =>
                     {
-                        mainForm.Show();
-                        mainForm.BringToFront();
+                        mainForm.ShowSettingsWindow();
                     });
                     ipcServer.Disconnect();
                 }
                 ipcServer.Close();
             });
 
-            app.Run(mainForm);
+            if (nativeSettings) { Native.MacSettingsWindow.Attach(mainForm); app.Run(); } else app.Run(mainForm);
         }
 
         private static CommandLineOptions ParseCmdLineOptions(string[] args)
@@ -149,6 +152,13 @@ namespace OpenTabletDriver.UX
         public static Uri Website { get; } = new Uri(@"https://github.com/OpenTabletDriver/OpenTabletDriver");
         public static string License { get; } = new StreamReader(Assembly.GetExecutingAssembly().GetManifestResourceStream("OpenTabletDriver.UX.LICENSE")!).ReadToEnd();
 
+        public string SettingsToken { get; private set; } = "";
+        public void SetSettingsState(SettingsState state)
+        {
+            SettingsToken = state.Token;
+            Settings = state.Settings;
+        }
+
         private Settings? settings;
         public Settings Settings
         {
@@ -163,6 +173,7 @@ namespace OpenTabletDriver.UX
 
         public WindowSingleton<StartupGreeterWindow> StartupGreeterWindow { get; } = new WindowSingleton<StartupGreeterWindow>();
         public WindowSingleton<PluginManagerWindow> PluginManagerWindow { get; } = new WindowSingleton<PluginManagerWindow>();
+        public WindowSingleton<InputTestWindow> InputTestWindow { get; } = new WindowSingleton<InputTestWindow>();
         public WindowSingleton<TabletDebugger> DebuggerWindow { get; } = new WindowSingleton<TabletDebugger>();
         public WindowSingleton<DeviceStringReader> StringReaderWindow { get; } = new WindowSingleton<DeviceStringReader>();
         public WindowSingleton<DeviceInitSender> InitSenderWindow { get; } = new WindowSingleton<DeviceInitSender>();
@@ -175,6 +186,7 @@ namespace OpenTabletDriver.UX
             StartupGreeterWindow.Close();
             PluginManagerWindow.Close();
             DebuggerWindow.Close();
+            InputTestWindow.Close();
             StringReaderWindow.Close();
             InitSenderWindow.Close();
             UpdaterWindow.Close();
@@ -186,6 +198,7 @@ namespace OpenTabletDriver.UX
             try
             {
                 var exception = e.ExceptionObject as Exception;
+                StartupLog.WriteException(exception);
                 Log.Exception(exception);
                 exception!.ShowMessageBox();
             }

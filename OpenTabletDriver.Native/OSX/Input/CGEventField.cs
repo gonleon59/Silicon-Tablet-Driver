@@ -16,6 +16,9 @@ namespace OpenTabletDriver.Native.OSX.Input
         scrollWheelEventDeltaAxis1 = 11, // int
         scrollWheelEventDeltaAxis2 = 12, // int
         scrollWheelEventDeltaAxis3 = 13, // int
+        scrollWheelEventIsContinuous = 88,
+        scrollWheelEventScrollPhase = 99,
+        scrollWheelEventMomentumPhase = 123,
         scrollWheelEventFixedPtDeltaAxis1 = 93, // int
         scrollWheelEventFixedPtDeltaAxis2 = 94, // int
         scrollWheelEventFixedPtDeltaAxis3 = 95, // int

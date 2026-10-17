@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using Eto.Forms;
 using MonoMac.AppKit;
 using MonoMac.ObjCRuntime;
@@ -47,9 +46,6 @@ internal class FormHandler : Eto.Mac.Forms.FormHandler
 
     private static void UpdateActivationPolicy(object sender, EventArgs e)
     {
-        var hasNonMinimizedVisibleWindow =
-            Application.Instance.Windows.Any(window => window.Visible && window.WindowState != WindowState.Minimized);
-        NSApplication.SharedApplication.ActivationPolicy = hasNonMinimizedVisibleWindow
-            ? NSApplicationActivationPolicy.Regular : NSApplicationActivationPolicy.Accessory;
+        NSApplication.SharedApplication.ActivationPolicy = NSApplicationActivationPolicy.Accessory;
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Eto.Drawing;
 using Eto.Forms;
 using OpenTabletDriver.Desktop.Reflection;
@@ -33,7 +34,7 @@ namespace OpenTabletDriver.UX.Controls
                 }
             };
 
-            mainButton.TextBinding.Bind(this.StoreBinding.Convert<string?>(s => s?.GetElidedHumanReadableString(100)));
+            mainButton.TextBinding.Bind(this.StoreBinding.Convert<string?>(DescribeBinding));
 
             mainButton.Click += async (sender, e) =>
             {
@@ -51,6 +52,24 @@ namespace OpenTabletDriver.UX.Controls
         }
 
         private Button mainButton, advancedButton;
+
+        private static string? DescribeBinding(PluginSettingStore? binding)
+        {
+            if (binding?.Path == "OpenTabletDriver.Desktop.Binding.MultiKeyBinding")
+            {
+                var keys = binding.Settings.FirstOrDefault(s => s.Property == "Keys")?.Value?.ToString();
+                var action = keys switch
+                {
+                    "Application+LeftBracket" => "Back",
+                    "Application+RightBracket" => "Forward",
+                    "Control+Up" => "Mission Control (all windows)",
+                    "F11" => "Show desktop",
+                    _ => null
+                };
+                if (action != null) return $"{Language.T(action)} ({keys})";
+            }
+            return binding?.GetElidedHumanReadableString(100);
+        }
 
         public event EventHandler<EventArgs>? StoreChanged;
 

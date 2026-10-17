@@ -17,10 +17,10 @@ namespace OpenTabletDriver.UX.Controls
         {
             this.Content = placeholder = new Placeholder
             {
-                Text = "No plugins containing this type are installed.",
+                Text = Language.T("No plugins containing this type are installed."),
                 ExtraContent = new Button
                 {
-                    Text = "Open Plugin Manager",
+                    Text = Language.T("Open Plugin Manager"),
                     Command = new Command((s, e) => App.Current.PluginManagerWindow.Show())
                 }
             };
@@ -117,7 +117,7 @@ namespace OpenTabletDriver.UX.Controls
             {
                 var enableButton = new CheckBox
                 {
-                    Text = $"Enable {store.Name ?? store.Path}",
+                    Text = $"{Language.T("Enable")} {Language.T(store.Name ?? store.Path ?? string.Empty)}",
                     Checked = store.Enable
                 };
                 enableButton.CheckedChanged += (sender, e) => store.Enable = enableButton.Checked ?? false;

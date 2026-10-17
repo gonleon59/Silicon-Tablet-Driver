@@ -16,15 +16,15 @@ namespace OpenTabletDriver.UX
             Indicator = new TrayIndicator
             {
                 Title = "OpenTabletDriver",
-                Image = App.Logo
+                Image = DesktopInterop.CurrentPlatform == PluginPlatform.MacOS
+                    ? Eto.Drawing.Bitmap.FromResource("OpenTabletDriver.UX.Assets.TabletMenu.png") : App.Logo
             };
 
             RefreshMenuItems();
 
             Indicator.Activated += (_, _) =>
             {
-                window.Show();
-                window.BringToFront();
+                window.ShowSettingsWindow();
             };
         }
 
@@ -74,29 +74,32 @@ namespace OpenTabletDriver.UX
         {
             var showWindow = new ButtonMenuItem
             {
-                Text = "Show Window"
+                Text = Language.T("Show Window")
             };
             showWindow.Click += (sender, e) =>
             {
-                window.Show();
-                window.BringToFront();
+                window.ShowSettingsWindow();
             };
 
             var close = new ButtonMenuItem
             {
-                Text = "Close"
+                Text = Language.T("Close")
             };
-            close.Click += (sender, e) => window.Close();
 
             if (DesktopInterop.CurrentPlatform == PluginPlatform.MacOS)
             {
                 // It's more idiomatic for macOS to include the name here
-                showWindow.Text = "Show OpenTabletDriver";
+                showWindow.Text = Language.T("Show OpenTabletDriver");
 
                 // Applications on macOS will keep running even after closing all their windows
                 // Offering a way to quit the app here is more idiomatic
-                close.Text = "Quit";
-                close.Click += (sender, e) => Application.Instance.Quit();
+                close.Text = Language.T("Quit");
+                close.Click += (sender, e) => Native.MacSettingsWindow.RequestQuit();
+            }
+
+            else
+            {
+                close.Click += (sender, e) => window.Close();
             }
 
             var items = new List<MenuItem>();
@@ -125,12 +128,12 @@ namespace OpenTabletDriver.UX
             {
                 items.Add(new SeparatorMenuItem());
 
-                var fileMenu = window.Menu.Items.GetSubmenu("&File") as ButtonMenuItem;
+                var fileMenu = window.Menu.Items.GetSubmenu(Language.T("&File")) as ButtonMenuItem;
                 if (fileMenu != null)
                 {
                     foreach (var item in fileMenu.Items)
                     {
-                        if (item.Text == "Close" || item.Text == "Presets")
+                        if (item.Text == Language.T("Close") || item.Text == Language.T("Presets"))
                             continue;
 
                         items.Add(CloneMenuItem(item));
@@ -138,15 +141,18 @@ namespace OpenTabletDriver.UX
                     items.Add(new SeparatorMenuItem());
                 }
 
-                var tabletsMenu = window.Menu.Items.GetSubmenu("Tablets");
+                var tabletsMenu = window.Menu.Items.GetSubmenu(Language.T("Tablets"));
                 if (tabletsMenu != null)
                     items.Add(CloneMenuItem(tabletsMenu));
 
-                var pluginsMenu = window.Menu.Items.GetSubmenu("Plugins");
+                // Keep language selection available when macOS hides the window menu bar.
+                items.Add(Language.CreateMenu());
+
+                var pluginsMenu = window.Menu.Items.GetSubmenu(Language.T("Plugins"));
                 if (pluginsMenu != null)
                     items.Add(CloneMenuItem(pluginsMenu));
 
-                var helpMenu = window.Menu.Items.GetSubmenu("&Help");
+                var helpMenu = window.Menu.Items.GetSubmenu(Language.T("&Help"));
                 if (helpMenu != null)
                     items.Add(CloneMenuItem(helpMenu));
 

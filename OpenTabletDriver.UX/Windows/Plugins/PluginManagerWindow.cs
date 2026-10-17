@@ -21,7 +21,7 @@ namespace OpenTabletDriver.UX.Windows.Plugins
         public PluginManagerWindow()
             : base(Application.Instance.MainForm)
         {
-            this.Title = "Plugin Manager";
+            this.Title = Language.T("Plugin Manager");
             this.ClientSize = new Size(1000, 750);
             this.AllowDrop = true;
 
@@ -52,7 +52,7 @@ namespace OpenTabletDriver.UX.Windows.Plugins
                                 Padding = 5,
                                 Content = new Label
                                 {
-                                    Text = "Drag and drop plugins here to install.",
+                                    Text = Language.T("Drag and drop plugins here to install."),
                                     VerticalAlignment = VerticalAlignment.Center
                                 }
                             }
@@ -174,19 +174,19 @@ namespace OpenTabletDriver.UX.Windows.Plugins
 
         private MenuBar ConstructMenu()
         {
-            var quitCommand = new Command { MenuText = "Exit", Shortcut = Keys.Escape };
+            var quitCommand = new Command { MenuText = Language.T("Exit"), Shortcut = Keys.Escape };
             quitCommand.Executed += (_, _) => this.Close();
 
-            var install = new Command { MenuText = "Install plugin...", Shortcut = Application.Instance.CommonModifier | Keys.O };
+            var install = new Command { MenuText = Language.T("Install plugin..."), Shortcut = Application.Instance.CommonModifier | Keys.O };
             install.Executed += PromptInstallPlugin;
 
-            var refresh = new Command { MenuText = "Refresh", Shortcut = Application.Instance.CommonModifier | Keys.R };
+            var refresh = new Command { MenuText = Language.T("Refresh"), Shortcut = Application.Instance.CommonModifier | Keys.R };
             refresh.Executed += RefreshHandler;
 
-            var alternateSource = new Command { MenuText = "Use alternate source..." };
+            var alternateSource = new Command { MenuText = Language.T("Use alternate source...") };
             alternateSource.Executed += async (sender, e) => await SwitchRepositorySource();
 
-            var pluginsDirectory = new Command { MenuText = "Open plugins directory..." };
+            var pluginsDirectory = new Command { MenuText = Language.T("Open plugins directory...") };
             pluginsDirectory.Executed += (sender, e) => DesktopInterop.OpenFolder(AppInfo.Current.PluginDirectory);
 
             return new MenuBar()

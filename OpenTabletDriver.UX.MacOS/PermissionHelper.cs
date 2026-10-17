@@ -1,186 +1,96 @@
 using System;
 using System.Diagnostics;
-using System.Threading;
+using System.IO;
 using MonoMac.AppKit;
 using MonoMac.Foundation;
-using MonoMac.ObjCRuntime;
 using OpenTabletDriver.Native.OSX;
 using OpenTabletDriver.Native.OSX.ApplicationServices;
 using OpenTabletDriver.Native.OSX.IOkit;
 
 namespace OpenTabletDriver.UX.MacOS
 {
-    static public class PermissionHelper
+    public static class PermissionHelper
     {
-        public static bool HasPermissions()
+        public static bool HasPermissions(string[] arguments, bool alreadyRelaunched)
         {
             NSApplication.Init();
-
-            //https://source.chromium.org/chromium/chromium/src/+/refs/heads/main:base/process/process_info_mac.cc;drc=b0e89488c257ea10c5b433b7ff037150bacbade6;l=13
-            //Permissions are inherited from parent application such as Terminal, Visual Studio if the app is not launched from finder/dock/etc...
             var responsiblePid = LibQuarantine.responsibility_get_pid_responsible_for_pid(Environment.ProcessId);
-            var selfResponsible = responsiblePid == Environment.ProcessId;
             var responsibleAppName = NSRunningApplication.GetRunningApplication(responsiblePid)?.LocalizedName ?? "OpenTabletDriver";
 
-            //https://openradar.appspot.com/7381305
-            //Have to call IOHIDRequestAccess before AXIsProcessTrusted
-            var hasInputMonitoring = Environment.OSVersion.Version < new Version(10, 15) ||
-                    IOKit.IOHIDCheckAccess(IOHIDRequestType.kIOHIDRequestTypeListenEvent) == IOHIDAccessType.kIOHIDAccessTypeGranted;
-
-            if (!hasInputMonitoring)
+            if (responsiblePid > 0 && responsiblePid != Environment.ProcessId)
             {
-                handlePermission(
-                    type: "Input Monitoring",
-                    message: "To use OpenTabletDriver, you need to grant the \"Input Monitoring\" permission so that input from the tablet can be received By OpenTabletDriver.\n\n" +
-                        $"To enable this permission, please click on \"Open Input Monitoring Preferences\" below. In the Input Preferences Monitoring panel that opens, tick the box next to \"{responsibleAppName}\".\n\n" +
-                        $"If \"{responsibleAppName}\" is already selected, you can remove it from the list by clicking on the \"-\" button, and then add it back to the list.",
-                    preferencesLink: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
-                    requestAccess: () =>
-                    {
-                        //When granting permission, system will ask the user to quit and restart the app.
-                        //Catch the quit event here and kill and restart the app.
-                        KillOnQuitHandler.Register();
-
-                        IOKit.IOHIDRequestAccess(IOHIDRequestType.kIOHIDRequestTypeListenEvent);
-                    });
-            }
-
-            var hasAccessibility = ApplicationServices.AXIsProcessTrusted();
-
-            if (!hasAccessibility)
-            {
-                handlePermission(
-                    type: "Accessibility",
-                    message: $"To use OpenTabletDriver, you need to grant the \"Accessibility\" permission so that input from the tablet can be injected into the computer. \n\n" +
-                        $"To enable this permission, please click on \"Open Accessibility Preferences\" below. In the Accessibility Preferences panel that opens, tick the box next to \"{responsibleAppName}\".\n\n" +
-                        $"If \"{responsibleAppName}\" is already selected, you can remove it from the list by clicking on the \"-\" button, and then add it back to the list.",
-                    preferencesLink: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
-                    requestAccess: () => axRequestAccess());
-            }
-
-            if (!hasAccessibility || !hasInputMonitoring)
-            {
-                if (selfResponsible)
+                // A direct terminal launch checks the host application's TCC identity.
+                // Do not tell the user to remove correctly granted driver permissions.
+                bool russian = Language.Current == "ru";
+                using var contextAlert = new NSAlert
                 {
-                    var process = Process.Start("open", new[] { NSBundle.MainBundle.BundlePath, "-n" });
-                    process.WaitForExit();
-                }
-                else
+                    MessageText = russian ? "Способ запуска OpenTabletDriver" : "OpenTabletDriver launch context",
+                    InformativeText = russian
+                        ? $"Этот экземпляр запущен через {responsibleAppName}, поэтому macOS проверяет разрешения этого приложения. Переключатели OpenTabletDriver менять не нужно. Откройте драйвер обычным способом из папки «Программы»."
+                        : $"This instance was launched through {responsibleAppName}, so macOS checks that application's permissions. Do not remove the driver's grants. Open the driver normally from Applications.",
+                    AlertStyle = NSAlertStyle.Warning
+                };
+                contextAlert.AddButton(russian ? "Выйти" : "Quit");
+                if (!alreadyRelaunched) contextAlert.AddButton(russian ? "Открыть обычным способом" : "Open normally");
+                if (contextAlert.RunModal() == 1001 && !alreadyRelaunched)
                 {
-                    var alert = new NSAlert()
+                    var bundle = Directory.GetParent(Environment.ProcessPath!)?.Parent?.Parent?.FullName;
+                    if (bundle != null && bundle.EndsWith(".app", StringComparison.OrdinalIgnoreCase))
                     {
-                        MessageText = $"Please restart {responsibleAppName} and launch OpenTabletDriver again.",
-                        AlertStyle = NSAlertStyle.Warning,
-                    };
-                    alert.RunModal();
+                        var launch = new ProcessStartInfo("/usr/bin/open") { UseShellExecute = false };
+                        launch.ArgumentList.Add("-n");
+                        launch.ArgumentList.Add(bundle);
+                        launch.ArgumentList.Add("--args");
+                        launch.ArgumentList.Add("--permissions-relaunch");
+                        foreach (var argument in arguments) launch.ArgumentList.Add(argument);
+                        Process.Start(launch);
+                    }
                 }
-
                 return false;
             }
-            return true;
-        }
 
-        private static void handlePermission(
-            string type,
-            string message,
-            string preferencesLink,
-            Action requestAccess
-            )
-        {
-            var alert = new NSAlert()
+            // Always re-read the OS result. A checked Settings row can belong to an older
+            // ad-hoc signature, and neither a prompt nor opening Settings grants access.
+            while (true)
             {
-                MessageText = message,
-                AlertStyle = NSAlertStyle.Warning,
-            };
+                var input = Environment.OSVersion.Version < new Version(10, 15)
+                    ? IOHIDAccessType.kIOHIDAccessTypeGranted
+                    : IOKit.IOHIDCheckAccess(IOHIDRequestType.kIOHIDRequestTypeListenEvent);
+                var accessibility = ApplicationServices.AXIsProcessTrusted();
+                Console.Error.WriteLine($"Permissions: pid={Environment.ProcessId}, responsiblePid={responsiblePid}, input={input}, accessibility={accessibility}");
+                if (input == IOHIDAccessType.kIOHIDAccessTypeGranted && accessibility)
+                    return true;
 
-            alert.AddButton($"Next");
-            alert.AddButton($"Open {type} Preference");
-            alert.AddButton($"Cancel");
-
-            var linkHandler = new UrlHandler(preferencesLink);
-            alert.Buttons[1].Action = new Selector("onClick:");
-            alert.Buttons[1].Target = linkHandler;
-
-            var cancelHandler = new CancelHandler();
-            alert.Buttons[2].Action = new Selector("onClick:");
-            alert.Buttons[2].Target = cancelHandler;
-
-            //Prevent our alert obscuring the system permission dialog.
-            Thread thread = new Thread(() =>
-            {
-                Thread.Sleep(150);
-                NSApplication.SharedApplication.InvokeOnMainThread(() =>
+                bool russian = Language.Current == "ru";
+                string yes = russian ? "разрешено" : "allowed";
+                string no = russian ? "не разрешено для этой сборки" : "not allowed for this build";
+                using var alert = new NSAlert
                 {
-                    alert.Window.Level = NSWindowLevel.Normal;
-                    //Prevent the console app/visual studio obscuring our alert
-                    alert.Window.OrderFrontRegardless();
-                    requestAccess();
-                });
-            });
-
-            thread.Start();
-            var result = alert.RunModal();
-            thread.Join();
-        }
-
-        private static void axRequestAccess()
-        {
-            var options = CoreFoundation.CFDictionaryCreateMutable(IntPtr.Zero, 0, IntPtr.Zero, IntPtr.Zero);
-            CoreFoundation.CFDictionaryAddValue(options, ApplicationServices.kAXTrustedCheckOptionPrompt, CoreFoundation.kCFBooleanTrue);
-            ApplicationServices.AXIsProcessTrustedWithOptions(options);
-        }
-
-        private class KillOnQuitHandler : NSObject
-        {
-            static KillOnQuitHandler handler;
-
-#pragma warning disable CA1822
-            [Export("handleQuitEvent:withReplyEvent:")]
-            private void handleQuitEvent(NSAppleEventDescriptor evt, NSAppleEventDescriptor replyEvt)
-#pragma warning restore CA1822
-            {
-                Process.GetCurrentProcess().Kill();
-            }
-
-            public static void Register()
-            {
-                handler ??= new KillOnQuitHandler();
-                NSAppleEventManager.SharedAppleEventManager.SetEventHandler(handler,
-                    new MonoMac.ObjCRuntime.Selector("handleQuitEvent:withReplyEvent:"), AEEventClass.AppleEvent,
-                    AEEventID.QuitApplication);
-            }
-        }
-
-        private class UrlHandler : NSObject
-        {
-            public UrlHandler(string url)
-            {
-                _url = url;
-            }
-
-            private string _url;
-
-            [Export("onClick:")]
-            private void onClick(NSObject target)
-            {
-                NSWorkspace.SharedWorkspace.OpenUrl(new NSUrl(_url));
-            }
-        }
-
-        private class CancelHandler : NSObject
-        {
-            public CancelHandler()
-            {
-            }
-
-#pragma warning disable CA1822
-            [Export("onClick:")]
-            private void onClick(NSObject target)
-#pragma warning restore CA1822
-            {
-                Process.GetCurrentProcess().Kill();
+                    MessageText = russian ? "Доступ OpenTabletDriver" : "OpenTabletDriver permissions",
+                    InformativeText = russian
+                        ? $"Мониторинг ввода: {(input == IOHIDAccessType.kIOHIDAccessTypeGranted ? yes : no)}\nУниверсальный доступ: {(accessibility ? yes : no)}\n\nПриложение: {responsibleAppName}\n\nЕсли переключатель уже включён, разрешение могло остаться от предыдущей подписи приложения. Удалите старую запись и добавьте текущий OpenTabletDriver из папки «Программы». Затем закройте и снова откройте драйвер.\n\n«Проверить снова» повторно читает разрешения macOS. Драйвер не перезапускается автоматически."
+                        : $"Input Monitoring: {(input == IOHIDAccessType.kIOHIDAccessTypeGranted ? yes : no)}\nAccessibility: {(accessibility ? yes : no)}\n\nApplication: {responsibleAppName}\n\nAn enabled switch may belong to the previous application signature. Remove that entry and add the current OpenTabletDriver from Applications, then quit and reopen the driver.\n\nRecheck reads permissions from macOS again. The driver does not restart automatically.",
+                    AlertStyle = NSAlertStyle.Warning
+                };
+                alert.AddButton(russian ? "Проверить снова" : "Recheck");
+                alert.AddButton(russian ? "Мониторинг ввода…" : "Input Monitoring…");
+                alert.AddButton(russian ? "Универсальный доступ…" : "Accessibility…");
+                alert.AddButton(russian ? "Выйти" : "Quit");
+                var result = alert.RunModal();
+                switch (result)
+                {
+                    case 1000: // Explicit user retry, never an automatic relaunch.
+                        break;
+                    case 1001:
+                        NSWorkspace.SharedWorkspace.OpenUrl(new NSUrl("x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"));
+                        break;
+                    case 1002:
+                        NSWorkspace.SharedWorkspace.OpenUrl(new NSUrl("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"));
+                        break;
+                    default:
+                        return false;
+                }
             }
         }
     }
 }
-

@@ -53,7 +53,7 @@ namespace OpenTabletDriver.UX.Dialogs
                         Expand = true,
                         Control = new Button((sender, e) => Close(null))
                         {
-                            Text = "Cancel"
+                            Text = Language.T("Cancel")
                         }
                     },
                     new StackLayoutItem
@@ -61,7 +61,7 @@ namespace OpenTabletDriver.UX.Dialogs
                         Expand = true,
                         Control = new Button((sender, e) => Return(owner, repo, gitRef))
                         {
-                            Text = "Apply"
+                            Text = Language.T("Apply")
                         }
                     }
                 }

@@ -16,13 +16,13 @@ namespace OpenTabletDriver.UX.Windows
         public DeviceInitSender()
             : base(Application.Instance.MainForm)
         {
-            this.Title = "Device Init Sender";
+            this.Title = Language.T("Device Init Sender");
             this.Icon = App.Logo.WithSize(App.Logo.Size);
             this.ClientSize = new Size(400, 450);
 
             var sendButton = new Button
             {
-                Text = "Send Init",
+                Text = Language.T("Send Init"),
             };
 
             sendButton.Click += async (_, _) => await SendInitWithTimeout(initValueText.Text,

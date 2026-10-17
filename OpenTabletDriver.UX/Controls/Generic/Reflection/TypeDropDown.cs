@@ -11,7 +11,7 @@ namespace OpenTabletDriver.UX.Controls.Generic.Reflection
     {
         public TypeDropDown()
         {
-            this.ItemTextBinding = Binding.Property<TypeInfo, string>(t => t.GetFriendlyName());
+            this.ItemTextBinding = Binding.Property<TypeInfo, string>(t => Language.T(t.GetFriendlyName()));
             this.ItemKeyBinding = Binding.Property<TypeInfo, string>(t => t.FullName!);
 
             AppInfo.PluginManager.AssembliesChanged += HandleAssembliesChanged;

@@ -14,9 +14,9 @@ namespace OpenTabletDriver.UX.Controls.Output.Area
                 {
                     Control = new UnitGroup
                     {
-                        Text = "Rotation",
+                        Text = Language.T("Rotation"),
                         Unit = "°",
-                        ToolTip = "Angle of rotation about the center of the area.",
+                        ToolTip = Language.T("Angle of rotation about the center of the area."),
                         Orientation = Orientation.Horizontal,
                         Content = rotation = new FloatNumberBox()
                     }
@@ -34,10 +34,10 @@ namespace OpenTabletDriver.UX.Controls.Output.Area
         {
             base.CreateMenu();
 
-            this.ContextMenu.Items.GetSubmenu("Flip").Items.Add(
+            this.ContextMenu.Items.GetSubmenu(Language.T("Flip")).Items.Add(
                 new ActionCommand
                 {
-                    MenuText = "Handedness",
+                    MenuText = Language.T("Handedness"),
                     Action = () =>
                     {
                         Area!.Rotation += 180;

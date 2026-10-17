@@ -12,7 +12,7 @@ namespace OpenTabletDriver.UX.Windows.Greeter
         public StartupGreeterWindow()
             : base(Application.Instance.MainForm)
         {
-            base.Title = "OpenTabletDriver Guide";
+            base.Title = Language.T("OpenTabletDriver Guide");
 
             var bounds = Application.Instance.MainForm.ClientSize;
             var minWidth = Math.Min(895, bounds.Width * 0.95);
@@ -30,12 +30,12 @@ namespace OpenTabletDriver.UX.Windows.Greeter
 
             var nextButton = new Button((sender, e) => pageViewer.NextPage())
             {
-                Text = "Next"
+                Text = Language.T("Next")
             };
 
             var prevButton = new Button((sender, e) => pageViewer.PreviousPage())
             {
-                Text = "Previous"
+                Text = Language.T("Previous")
             };
 
             pageViewer.SelectedIndexChanged += (sender, e) =>

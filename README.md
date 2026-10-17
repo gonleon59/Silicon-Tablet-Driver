@@ -1,179 +1,123 @@
-[![GitHub Actions Status](https://github.com/OpenTabletDriver/OpenTabletDriver/actions/workflows/dotnet.yml/badge.svg)](https://github.com/OpenTabletDriver/OpenTabletDriver/actions/workflows/dotnet.yml) [![Total Download Count](https://img.shields.io/github/downloads/OpenTabletDriver/OpenTabletDriver/total.svg)](https://github.com/OpenTabletDriver/OpenTabletDriver/releases/latest)
+# Silicon Tablet Driver
 
-# OpenTabletDriver
+**A second life for an older tablet.**
 
-English | [한국어](docs/README_KO.md) | [Español](docs/README_ES.md) | [Русский](docs/README_RU.md) | [简体中文](docs/README_CN.md) | [Français](docs/README_FR.md) | [Deutsch](docs/README_DE.md) | [Português-BR](docs/README_PTBR.md) | [Tiếng Việt](docs/README_VN.md)
+An experimental [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) fork for macOS on Apple Silicon, focused on the **Wacom Bamboo CTH-661**.
 
-OpenTabletDriver is an open source, cross platform, user mode tablet driver. The goal of OpenTabletDriver is to be as cross platform as possible with the highest compatibility in an easily configurable graphical user interface.
+The goal is to keep a useful tablet working with a modern Mac: pen input for drawing and pointing, two-finger touch navigation, and native settings.
 
-<p align="middle">
-  <img src="https://i.imgur.com/XDYf62e.png" width="410" align="middle"/>
-  <img src="https://i.imgur.com/jBW8NpU.png" width="410" align="middle"/>
-  <img src="https://i.imgur.com/ZLCy6wz.png" width="410" align="middle"/>
-</p>
+English · [Русский](README_RU.md)
 
-# Supported Tablets
+## Status
 
-The status of all supported tablets can be seen here.
+**Experimental preview.** Development builds have been tested locally with a CTH-661 on an Apple Silicon Mac. Other tablets, Intel Macs, and other operating systems have not been validated for this fork.
 
-- [Supported Tablets](https://opentabletdriver.net/Tablets)
+The development baseline is **bamboo26**. Silicon Tablet Driver is the public project name; existing build scripts and applications still use OpenTabletDriver names. Public packaging and a separate application identity are being prepared.
 
-# Installation
+This is an independent community project, not an official OpenTabletDriver release, Wacom driver, or Apple product.
 
-- [Windows](https://opentabletdriver.net/Wiki/Install/Windows)
-- [Linux](https://opentabletdriver.net/Wiki/Install/Linux)
-- [MacOS](https://opentabletdriver.net/Wiki/Install/MacOS)
+## Features
 
-# Troubleshooting
+- Native SwiftUI settings with English/Russian UI and bilingual search.
+- Absolute pen mapping, configurable pen buttons, and adjustable hover/contact stabilization.
+- Relative touch pointer control with speed, acceleration, fine movement, and smoothing.
+- Two-finger scrolling with natural scrolling and optional inertia.
+- Tap-to-click, two-finger secondary click, and tap-to-drag.
+- Navigation actions, shortcut-based pinch zoom, and document rotation in Preview.
+- Tablet orientation, working-area size and margins, and monitor selection.
+- Menu-bar operation, optional USB-triggered launch, and an input-test window.
+- Explicit Save/Revert, numeric-field validation, and settings-conflict detection.
 
-Please see our [website wiki](https://opentabletdriver.net/Wiki) for common issues and other quirks.
+Some gestures use application keyboard shortcuts and depend on the active application. This is not a complete Magic Trackpad implementation. There are no three-/four-finger gestures or Force Touch.
 
-# Running OpenTabletDriver binaries
+## Compatibility
 
-OpenTabletDriver functions as two separate processes that interact with each other seamlessly. The active program that does all of the tablet data handling is `OpenTabletDriver.Daemon`, while the GUI frontend is `OpenTabletDriver.UX.*`, where `*` depends on your platform<sup>1</sup>. The daemon must be started in order for anything to work, however the GUI is unnecessary. If you have existing settings, they should apply when the daemon starts.
-
-> <sup>1</sup>Windows uses `Wpf`, Linux uses `Gtk`, and MacOS uses `MacOS` respectively. This for the most part can be ignored if you don't build it from source as only the correct version will be provided.
-
-## Building OpenTabletDriver from source
-
-The requirements to build OpenTabletDriver are consistent across all platforms. Running OpenTabletDriver on each platform requires different dependencies.
-
-### All platforms
-
-- .NET 10 SDK (can be obtained from [here](https://dotnet.microsoft.com/download/dotnet/10.0) - You want the SDK for your platform, Linux users should install via package manager where possible)
-
-#### Windows
-
-Run `build.sh windows` to produce binary builds to 'bin' folder. These builds will run in portable mode by default.
-
-If you don't have WSL or some other way to access BASH with a working dotnet install, the deprecated Windows build script still exists in `build.ps1`.
-
-#### Linux
-
-Required packages (some packages may be pre-installed for your distribution):
-
-- libx11
-- libxrandr
-- libevdev2
-- GTK+3
-
-Run `./eng/bash/package.sh`. If a "package" build is desired,
-there are official support for the following packaging formats:
-
-| Package Format | Command |
+| Item | Current scope |
 | --- | --- |
-| Generic binary tarball (`.tar.gz`) | `./eng/bash/package.sh --package BinaryTarBall` |
-| [Simple binary package](./eng/bash/Simple/README-SimplePackage.md) (`.tar.gz`) | `./eng/bash/package.sh --package Simple` |
-| Debian package (`.deb`) | `./eng/bash/package.sh --package Debian` |
-| Red Hat package (`.rpm`) | `./eng/bash/package.sh --package RedHat` |
-| Generic package (for package maintainers) | `./eng/bash/package.sh --package Generic` |
+| Computer | Mac with Apple Silicon; native ARM64 |
+| macOS | Build target: macOS 14 or later |
+| Primary tablet | Wacom Bamboo CTH-661, USB |
+| Local hardware validation | CTH-661 on Apple Silicon, macOS 27.0.1 |
+| Runtime | Packaged builds include .NET; Rosetta is not required |
 
-The generic binary tarball is designed to be extracted from the root directory.
+The minimum build target does not mean every macOS version from 14 onward has been tested. Upstream's device support does not establish compatibility with this fork.
 
-The simple package should only be used for testing new features on existing
-installs, as it does not install necessary system files.
+## Installation and signing
 
-You can also run `./build.sh linux` to generate files into `bin/`, but this does not include system files.
+Public release packaging is in preparation. Follow the installation and signing notes attached to the exact release you download.
 
-#### MacOS
+For current development builds:
 
-A newer version of Bash and Coreutils is required to build OpenTabletDriver. You can install them using Homebrew.
-Run `PATH="$(brew --prefix coreutils)/libexec/gnubin:$PATH" $(brew --prefix)/bin/bash ./eng/bash/package.sh -r osx-x64`.
+1. Quit other tablet drivers, including upstream OpenTabletDriver.
+2. Copy the packaged OpenTabletDriver.app to Applications.
+3. Launch the installed copy and allow **Input Monitoring** and **Accessibility** when requested.
+4. Open settings from the tablet icon in the menu bar.
+5. Check the tablet connection and permissions in Diagnostics, select the mapping, and save.
 
-| Package Format | Command |
-| --- | --- |
-| Unsigned x64 Package | `./eng/bash/package.sh --runtime osx-x64 --package macos` |
-| Signed x64 Package | `./eng/bash/package.sh --signed true --runtime osx-x64 --package macos` |
-| Signed arm64 Package | `./eng/bash/package.sh --signed true --runtime osx-arm64 --package macos` |
+Closing settings leaves the driver running; Quit exits it.
 
-Packaging signed MacOS builds on Linux or Windows requires `rcodesign`.
+Current local builds are **not Apple-notarized**. Their local/ad-hoc signature does not establish Apple-verified developer identity. macOS may block an internet-downloaded build; consult [Apple's guidance](https://support.apple.com/en-us/102445). Building from source is another option.
 
-As of [MacOS 11](https://developer.apple.com/documentation/macos-release-notes/macos-big-sur-11_0_1-universal-apps-release-notes/#Code-Signing), you **must** sign arm64 packages.
+Development builds share application identity, settings paths, RPC names, and the USB helper label with upstream. Do not run them together. Renaming the app alone does not isolate them. Public identity and migration will be documented before an independently installed release.
 
-# Features
+## Using the tablet
 
-- Fully platform-native GUI
-  - Windows: `Windows Presentation Foundation`
-  - Linux: `GTK+3`
-  - MacOS: `MonoMac`
-- Multi-tablet support
-  - Handles multiple tablets from a large selection of models and
-    manufacturers, each with its own plugin pipeline and settings
-- Validated tablet specifications, ensuring the smoothest transition if
-  switching tablets
-- Fully fledged console tool
-  - Quickly acquire, change, load, or save settings
-  - Scripting support (json output)
-- Absolute cursor positioning
-  - Screen area and tablet area
-  - Center-anchored offsets
-  - Precise area rotation
-- Relative cursor positioning
-  - px/mm horizontal and vertical sensitivity
-- Advanced tablet feature compatibility
-  - Pressure output
-    - Windows: Needs Windows Ink OpenTabletDriver plugin for Windows Ink output
-      mode, and VMulti system driver
-    - Linux: Natively supported with "Linux Artist Mode" output mode
-    - MacOS: Natively supported in all output modes
-  - Pen tilt
-  - Tablet pad wheels/dials
-  - Auxiliary/Express Keys
-- Pen bindings
-  - Tip by pressure bindings
-  - Express ("Aux") key bindings
-  - Pen button bindings
-  - Mouse button bindings
-  - Wheel bindings
-  - Keyboard bindings
-  - Preset bindings
-  - External plugin bindings
-- Saving and loading settings
-  - Persistent settings
-  - Presets for quick-access to prior saved settings
-- Plugins
-  - Plugin Manager (via
-    [Plugin-Repository](https://github.com/OpenTabletDriver/Plugin-Repository))
-  - Filters, including asynchronous filters (interpolators)
-  - Output modes
-- Device debugging tools
-  - Tablet data analyzer ("Tablet Debugger")
-  - USB Device String readings
-- Automatic version update notification
-  - Can be disabled with `--skipupdate` command line flag
-- Vendor driver area conversions
-  - Supports transforming your Wacom / XP-Pen / Huion / Gaomon / VEIKK area
-- Standalone daemon, for low-spec or headless systems.
+Keep the pen away while using touch: pen proximity suppresses touch. Choose the orientation and monitors before adjusting the working area. Set pointer speed, fine movement, scrolling, and smoothing to suit your hand.
 
-# Contributing to OpenTabletDriver
+Use the pen/touch test window to inspect input. Test pressure and eraser behavior in your drawing application before relying on them for artwork.
 
-If you wish to contribute to OpenTabletDriver, check out the [issue
-tracker](https://github.com/OpenTabletDriver/OpenTabletDriver/issues). When
-creating pull requests, follow the guidelines outlined in our [contribution
-guidelines](CONTRIBUTING.md).
+Language can be changed in General. Numeric fields accept a decimal point or comma.
 
-If you have any issues or suggestions, [open an issue
-ticket](https://github.com/OpenTabletDriver/OpenTabletDriver/issues/new/choose)
-and fill out the template with relevant information. We welcome both bug
-reports, as well as new tablets to add support for. In many cases adding support
-for a new tablet is quite easy.
+Pinch uses zoom shortcuts, not continuous native magnification. Rotation is restricted to Preview. The vertical development preset disables the four tablet-body buttons; pen buttons remain available.
 
-For issues and PRs related to OpenTabletDriver's [web page](https://opentabletdriver.net), see the repository [here](https://github.com/OpenTabletDriver/opentabletdriver.github.io).
+## Validation and known gaps
 
-### Supporting a new tablet
+Local bamboo26 verification on **15 October 2026** reported:
 
-If you'd like us to add support for a new tablet, open an issue or join our
-[discord](https://discord.gg/9bcMaPkVAR) asking for support. *We generally
-prefer that adding support for a tablet be done through discord, due to the
-back-and-forth involved*.
+- 2,222 C# tests passed, 6 existing configuration tests skipped, 0 failures.
+- 18 Swift numeric-input scenarios, 12 search checks, and 12 settings-model checks passed.
+- ARM64 packaging, signature integrity, settings save/restore, permissions, and clean quit/relaunch were checked locally.
 
-We'll have you do a few things like making a recording of the data sent by your
-tablet using our built-in tablet debugging tool, testing features of the tablet
-(on-tablet buttons, pen buttons, pen pressure, etc) with different configs we'll
-send you to try.
+These results belong to that build and environment. A changed public identity or signing method needs fresh validation.
 
-You're also of course welcome to open a PR adding support for it yourself, if
-you have a good grasp on what's involved.
+Physical pen/touch behavior after the latest fixes, Adobe pressure/eraser behavior, clean-account installation, sleep/reboot/login, and repeated USB reconnection remain to be verified. One discard-and-quit dialog branch remains unconfirmed after UI automation interruptions. Production readiness and hardware certification are not claimed.
 
-Generally this process is relatively easy, especially if it's for a tablet
-manufacturer we already have support for on other tablets.
+## Build from source
+
+Requirements: .NET 10 SDK, Xcode Command Line Tools with Swift, Bash 4+, and GNU coreutils. The SDK policy is defined in global.json.
+
+From the repository root on an Apple Silicon Mac, with Bash and coreutils installed through Homebrew:
+
+~~~sh
+dotnet test OpenTabletDriver.Tests -c Release
+
+export PATH="$(brew --prefix coreutils)/libexec/gnubin:$PATH"
+OTD_BUILD_NUMBER=1 VERSION_SUFFIX=-silicon-preview.1 \
+  "$(brew --prefix bash)/bin/bash" eng/bash/package.sh \
+  --runtime osx-arm64 --signed true --output release-artifacts
+
+codesign --verify --deep --strict release-artifacts/OpenTabletDriver.app
+file release-artifacts/OpenTabletDriver.app/Contents/MacOS/OpenTabletDriver.UX.MacOS
+~~~
+
+Packaging still produces OpenTabletDriver.app. Without OTD_SIGNING_IDENTITY, it uses ad-hoc signing; this is not notarization. To use your own certificate, set OTD_SIGNING_IDENTITY locally. Never commit a signing private key.
+
+## Reporting issues and privacy
+
+Include the build version, macOS version, Mac chip, tablet model, connection method, expected behavior, and reproduction steps. State whether pen, touch, mapping, permissions, or startup is affected.
+
+Diagnostics and startup logs can contain device metadata and local paths. Inspect them before sharing. Diagnostic exports are not uploaded automatically.
+
+The inherited plugin manager and manual updater can access the network when used. Automatic upstream update checks are disabled on macOS in this fork. A blanket “no network access” claim would be inaccurate.
+
+## Origins, license, and contributions
+
+Based on OpenTabletDriver's 0.6.x branch, revision 0d151c417454bc0ba76fa8cc0804a87a9c7d089a.
+
+Original authorship and copyright notices are retained. This fork uses **LGPL-3.0-or-later**; see [LICENSE](LICENSE) and [COPYING.GPL3](COPYING.GPL3). Binary releases must provide access to corresponding source, including modifications and build scripts. Third-party components retain their own license terms.
+
+Development includes **AI-assisted code, review, and documentation**. Follow [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md), including applicable AI-disclosure rules for pull requests.
+
+Thanks to the OpenTabletDriver contributors whose work makes this project possible.
+
+[Upstream](https://github.com/OpenTabletDriver/OpenTabletDriver) · [Upstream documentation](https://opentabletdriver.net/) · [Development guide](docs/BAMBOO_MACOS.md)

@@ -7,6 +7,7 @@ namespace OpenTabletDriver.Desktop.Profiles
 {
     public class AbsoluteModeSettings : ViewModel
     {
+        public TabletMappingPreferences? MappingPreferences { get; set; }
         private bool _lockar, _clipping, _areaLimiting;
 
         [JsonProperty(nameof(Display))]

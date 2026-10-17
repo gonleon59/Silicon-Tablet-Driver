@@ -28,7 +28,7 @@ namespace OpenTabletDriver.UX.Windows.Plugins
                         Expand = true,
                         Control = uninstallButton = new Button(UninstallHandler)
                         {
-                            Text = "Uninstall"
+                            Text = Language.T("Uninstall")
                         }
                     },
                     new StackLayoutItem
@@ -82,22 +82,22 @@ namespace OpenTabletDriver.UX.Windows.Plugins
                     {
                         new AlignedGroup
                         {
-                            Text = "Name",
+                            Text = Language.T("Name"),
                             Content = name = new Label()
                         },
                         new AlignedGroup
                         {
-                            Text = "Owner",
+                            Text = Language.T("Owner"),
                             Content = owner = new Label()
                         },
                         new AlignedGroup
                         {
-                            Text = "Creator",
+                            Text = Language.T("Creator"),
                             Content = creator = new Label()
                         },
                         new AlignedGroup
                         {
-                            Text = "Description",
+                            Text = Language.T("Description"),
                             Content = description = new Label
                             {
                                 Wrap = WrapMode.Word,
@@ -107,40 +107,40 @@ namespace OpenTabletDriver.UX.Windows.Plugins
                         },
                         new AlignedGroup
                         {
-                            Text = "Driver Version",
+                            Text = Language.T("Driver Version"),
                             Content = driverVersion = new Label()
                         },
                         new AlignedGroup
                         {
-                            Text = "Max Supported Driver Version",
+                            Text = Language.T("Max Supported Driver Version"),
                             Content = maxDriverVersion = new Label()
                         },
                         new AlignedGroup
                         {
-                            Text = "Plugin Version",
+                            Text = Language.T("Plugin Version"),
                             Content = pluginVersion = new Label()
                         },
                         new AlignedGroup
                         {
-                            Text = "Source Code Repository",
+                            Text = Language.T("Source Code Repository"),
                             Content = sourceCode = new Button
                             {
                                 Width = 175,
-                                Text = "Show source code"
+                                Text = Language.T("Show source code")
                             }
                         },
                         new AlignedGroup
                         {
-                            Text = "Wiki",
+                            Text = Language.T("Wiki"),
                             Content = wiki = new Button
                             {
                                 Width = 175,
-                                Text = "Show plugin wiki"
+                                Text = Language.T("Show plugin wiki")
                             }
                         },
                         new AlignedGroup
                         {
-                            Text = "License",
+                            Text = Language.T("License"),
                             Content = license = new Label()
                         },
                         new StackLayoutItem(null, true),
@@ -171,7 +171,7 @@ namespace OpenTabletDriver.UX.Windows.Plugins
         private StackLayout actions;
         private Placeholder placeholder = new()
         {
-            Text = "No plugin selected.",
+            Text = Language.T("No plugin selected."),
         };
 
         private Label name, owner, creator, description, driverVersion, maxDriverVersion, pluginVersion, license;

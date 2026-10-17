@@ -12,6 +12,7 @@ namespace OpenTabletDriver.Desktop.Profiles
 {
     public class BindingSettings : ViewModel
     {
+        public bool DisableAuxiliaryButtons { get; set; }
         private float tP = 1, eP = 1;
 
         private PluginSettingStore? tipButton,

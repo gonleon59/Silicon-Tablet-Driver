@@ -20,10 +20,10 @@ namespace OpenTabletDriver.UX.Controls.Bindings
                     {
                         new Group
                         {
-                            Text = "Auxiliary",
+                            Text = Language.T("Auxiliary"),
                             Content = auxButtons = new BindingDisplayList
                             {
-                                Prefix = "Auxiliary Binding"
+                                Prefix = Language.T("Auxiliary Binding")
                             }
                         }
                     }

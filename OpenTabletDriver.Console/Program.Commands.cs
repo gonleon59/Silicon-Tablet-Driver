@@ -50,8 +50,12 @@ namespace OpenTabletDriver.Console
 
         private static async Task SaveSettings(FileInfo file)
         {
-            var settings = await GetSettings();
-            settings.Serialize(file);
+            if (!await EnsureDaemonReady()) return;
+            var state = await Driver.Instance!.GetSettingsState();
+            if (Path.GetFullPath(file.FullName) == Path.GetFullPath(AppInfo.Current.SettingsFile))
+                await Driver.Instance.SaveSettings(state.Settings,state.Token);
+            else
+                state.Settings.Serialize(file);
         }
 
         private static async Task SaveDefaultSettings()
@@ -407,7 +411,8 @@ namespace OpenTabletDriver.Console
         {
             if (!await EnsureDaemonReady()) return;
             await Driver.Instance!.DetectTablets();
-            await Driver.Instance!.SetSettings(await Driver.Instance.GetSettings());
+            var state=await Driver.Instance!.GetSettingsState();
+            await Driver.Instance.ApplySettings(state.Settings,state.Token);
         }
 
         private static async Task InstallPlugin(string filePath)

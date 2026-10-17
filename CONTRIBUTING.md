@@ -1,3 +1,13 @@
+# Bamboo fork contributions
+
+For macOS Bamboo changes, include the model, macOS version, orientation, connected monitor arrangement, clear reproduction steps and expected/actual behavior. Do not include device serial numbers, signing keys or unredacted raw diagnostics in public reports. Describe whether each feature uses native pointer/scroll events or application keyboard shortcuts.
+
+Run the full test project and the ARM64 package build in docs/BAMBOO_RELEASE.md. Hardware-sensitive changes need physical checks in addition to deterministic unit tests. Do not introduce private touchpad APIs or global rotation shortcuts that can reload a browser. Keep native CoreFoundation ownership explicit and release held buttons on cancellation/disposal.
+
+Disclose AI assistance in contributions. Per AGENTS.md, PR titles must include [AI Assisted], [AI Generated] or [AI], and PR descriptions must contain an AI disclosure. This fork's implementation includes AI-assisted code and documentation.
+
+---
+
 # Contributing Guidelines
 
 Thank you for showing interest in the development of OpenTabletDriver!

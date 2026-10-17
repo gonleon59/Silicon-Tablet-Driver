@@ -12,9 +12,11 @@ namespace OpenTabletDriver.Native.OSX.ApplicationServices
         public static IntPtr kAXTrustedCheckOptionPrompt = LibSystem.GetConstant(handle, "kAXTrustedCheckOptionPrompt");
 
         [DllImport(libas)]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool AXIsProcessTrusted();
 
         [DllImport(libas)]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool AXIsProcessTrustedWithOptions(IntPtr options);
     }
 }

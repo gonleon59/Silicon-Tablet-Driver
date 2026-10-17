@@ -12,6 +12,8 @@ namespace OpenTabletDriver.Plugin.Platform.Display
     /// </remarks>
     public interface IDisplay
     {
+        string? Name => $"Display {Index + 1}";
+        string Identifier => $"screen-{Index}";
         int Index { get; }
         float Width { get; }
         float Height { get; }

@@ -36,7 +36,7 @@ namespace OpenTabletDriver.UX.Windows
         public AboutWindow()
             : base(Application.Instance.MainForm)
         {
-            Title = "About OpenTabletDriver";
+            Title = Language.T("About OpenTabletDriver");
 
             _tabControl = new TabControl();
 
@@ -83,7 +83,7 @@ namespace OpenTabletDriver.UX.Windows
                     },
                     new Label
                     {
-                        Text = "Open source, cross-platform tablet configurator",
+                        Text = Language.T("Open source, cross-platform tablet configurator"),
                     },
                     new LinkButton
                     {
@@ -98,7 +98,7 @@ namespace OpenTabletDriver.UX.Windows
                 }
             };
 
-            return new TabPage(aboutTabContent) { Text = "About" };
+            return new TabPage(aboutTabContent) { Text = Language.T("About") };
         }
 
         private TabPage GenerateCreditsTabPage()
@@ -128,7 +128,7 @@ namespace OpenTabletDriver.UX.Windows
                 $"OpenTabletDriver v{App.Version} Credits",
                 creditsTabContentControl);
 
-            return new TabPage(creditsTabContent) { Text = "Credits" };
+            return new TabPage(creditsTabContent) { Text = Language.T("Credits") };
         }
 
         private static TabPage GenerateLicenseTabPage()
@@ -152,7 +152,7 @@ namespace OpenTabletDriver.UX.Windows
                 $"OpenTabletDriver v{App.Version} License",
                 licenseTabContentControl);
 
-            return new TabPage(licenseTabContent) { Text = "License" };
+            return new TabPage(licenseTabContent) { Text = Language.T("License") };
         }
 
         private static TabPage GenerateMemoriamTabPage()

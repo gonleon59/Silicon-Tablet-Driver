@@ -49,21 +49,21 @@ namespace OpenTabletDriver.UX.Windows.Tablet
 
         private readonly Label _rawTabletData = new() { Font = s_MonospaceFont };
 
-        private readonly DebuggerGroup _reportsRecordedGroup = new() { Text = "Reports Recorded" };
+        private readonly DebuggerGroup _reportsRecordedGroup = new() { Text = Language.T("Reports Recorded") };
         private readonly DebuggerGroup _rawTabletDataGroup;
         private readonly DebuggerGroup _tabletVisualizerGroup = new()
         {
-            Text = "Visualizer",
+            Text = Language.T("Visualizer"),
             MinimumSize = new Size(1, 200),
         };
         private readonly Group _additionalStatsGroup = new()
         {
-            Text = "Additional Stats",
-            Content = new Label { Text = "No stats observed yet" },
+            Text = Language.T("Additional Stats"),
+            Content = new Label { Text = Language.T("No stats observed yet") },
         };
 
-        private readonly ButtonMenuItem _debuggedReports = new() { Text = "Debugged Reports", Visible = false };
-        private readonly ButtonMenuItem _debuggedTablets = new() { Text = "Debugged Tablets", Visible = false };
+        private readonly ButtonMenuItem _debuggedReports = new() { Text = Language.T("Debugged Reports"), Visible = false };
+        private readonly ButtonMenuItem _debuggedTablets = new() { Text = Language.T("Debugged Tablets"), Visible = false };
 
         private int AdditionalStatColumnsPerRow { get; set; } = 3;
 
@@ -118,12 +118,12 @@ namespace OpenTabletDriver.UX.Windows.Tablet
                                         {
                                             new DebuggerGroup
                                             {
-                                                Text = "Device",
+                                                Text = Language.T("Device"),
                                                 Content = _deviceName,
                                             },
                                             new DebuggerGroup
                                             {
-                                                Text = "Report Rate",
+                                                Text = Language.T("Report Rate"),
                                                 Content = _reportRate,
                                             },
                                         },
@@ -152,7 +152,7 @@ namespace OpenTabletDriver.UX.Windows.Tablet
                                 {
                                     ExpandContent = false,
                                     MinimumSize = new Size(_FONT_SIZE * 22, _FONT_SIZE * 20),
-                                    Text = "Tablet Report",
+                                    Text = Language.T("Tablet Report"),
                                     Width = _FONT_SIZE * 22,
                                     Content = _tabletData,
                                 },
@@ -163,7 +163,7 @@ namespace OpenTabletDriver.UX.Windows.Tablet
                         _rawTabletDataGroup = new DebuggerGroup
                         {
                             Padding = _SPACING,
-                            Text = "Raw Tablet Data",
+                            Text = Language.T("Raw Tablet Data"),
                             Width = GetWidthOfRawTabletDataGroupBox(),
                             MinimumSize = new Size(_FONT_SIZE * 22, _FONT_SIZE * 1),
                             ExpandContent = false,
@@ -264,20 +264,20 @@ namespace OpenTabletDriver.UX.Windows.Tablet
         {
             var dataRecordingMenuItem = new CheckMenuItem
             {
-                Text = "Data Recording",
+                Text = Language.T("Data Recording"),
             };
 
             dataRecordingMenuItem.BindDataContext(x => x.Checked, (TDVM vm) => vm.DataRecordingEnabled);
 
             var openDataRecordingDirectoryMenuItem = new Command
             {
-                MenuText = "Open recordings directory...",
+                MenuText = Language.T("Open recordings directory..."),
             };
             openDataRecordingDirectoryMenuItem.Executed += (sender, e) => DesktopInterop.OpenFolder(AppInfo.Current.RecordingDirectory);
 
             ButtonMenuItem recordingTab = new()
             {
-                Text = "Recording",
+                Text = Language.T("Recording"),
                 Visible = true,
                 Items = {
                     dataRecordingMenuItem,
@@ -287,7 +287,7 @@ namespace OpenTabletDriver.UX.Windows.Tablet
 
             var visualizerEnabledMenuItem = new CheckMenuItem
             {
-                Text = "Visualizer",
+                Text = Language.T("Visualizer"),
             };
 
             visualizerEnabledMenuItem.BindDataContext(x => x.Checked, (TDVM vm) => vm.IsVisualizerEnabled);
@@ -295,7 +295,7 @@ namespace OpenTabletDriver.UX.Windows.Tablet
 
             var decodingSwitchMenuItem = new ButtonMenuItem
             {
-                Text = "Raw Data Mode",
+                Text = Language.T("Raw Data Mode"),
             };
 
             RadioMenuItem? rootRadioButton = null;
@@ -316,7 +316,7 @@ namespace OpenTabletDriver.UX.Windows.Tablet
 
             var additionalStatisticsMenuItem = new CheckMenuItem()
             {
-                Text = "Additional Statistics",
+                Text = Language.T("Additional Statistics"),
             };
 
             additionalStatisticsMenuItem.BindDataContext(x => x.Checked, (TDVM vm) => vm.ShowAdditionalStatistics);
@@ -332,7 +332,7 @@ namespace OpenTabletDriver.UX.Windows.Tablet
                 },
                 QuitItem = new ButtonMenuItem((_, _) => Application.Instance.AsyncInvoke(Close))
                 {
-                    Text = "Close Window",
+                    Text = Language.T("Close Window"),
                 },
                 Items =
                 {
@@ -345,13 +345,13 @@ namespace OpenTabletDriver.UX.Windows.Tablet
 #if DEBUG
             Menu.Items.Add(new ButtonMenuItem
             {
-                Text = "Force Refresh",
+                Text = Language.T("Force Refresh"),
                 Items =
                 {
                     new ButtonMenuItem(
                     (_, _) => Application.Instance.InvokeAsync(UpdateAdditionalStatisticsFields).ConfigureAwait(false))
                     {
-                        Text = "Additional Statistics",
+                        Text = Language.T("Additional Statistics"),
                     },
                 },
             });

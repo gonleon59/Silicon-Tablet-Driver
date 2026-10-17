@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using Eto.Forms;
@@ -42,7 +43,7 @@ namespace OpenTabletDriver.UX.Controls
             control = property.GetCustomAttributes<ModifierAttribute>().Aggregate(control, ApplyModifierAttribute);
 
             control.Width = width;
-            return new Group(attr?.DisplayName ?? property.Name, control, Orientation.Horizontal, false);
+            return new Group(Language.T(attr?.DisplayName ?? property.Name), control, Orientation.Horizontal, false);
         }
 
         private static Control GetControlForSetting(PropertyInfo property, DirectBinding<PluginSetting> binding)
@@ -76,7 +77,7 @@ namespace OpenTabletDriver.UX.Controls
 
                 var checkbox = new CheckBox
                 {
-                    Text = description
+                    Text = Language.T(description)
                 };
                 checkbox.CheckedBinding.Cast<bool>().Bind(
                     binding.Convert(
@@ -100,6 +101,29 @@ namespace OpenTabletDriver.UX.Controls
                         binding.DataValue.SetValue(sliderAttr.DefaultValue);
                 }
                 rv = tb;
+            }
+            else if (property.PropertyType.IsEnum)
+            {
+                var enumType = property.PropertyType;
+                var defaultValue = property.GetCustomAttribute<DefaultPropertyValueAttribute>()?.Value
+                    ?? Activator.CreateInstance(enumType)!;
+                var dropdown = new DropDown<object>
+                {
+                    DataStore = Enum.GetValues(enumType).Cast<object>().ToArray(),
+                    ItemTextBinding = Binding.Delegate<object, string>(value =>
+                    {
+                        var name = Enum.GetName(enumType, value)!;
+                        var description = enumType.GetField(name)?.GetCustomAttribute<DescriptionAttribute>()?.Description;
+                        return Language.T(description ?? name);
+                    })
+                };
+                // Deserialize into the enum type: JToken's untyped values are integers/strings,
+                // which cannot match the boxed enum values in the dropdown's data store.
+                dropdown.SelectedItemBinding.Bind(binding.Convert(
+                    setting => setting.HasValue ? setting.GetValue(enumType) : defaultValue,
+                    value => new PluginSetting(property, value)
+                ));
+                rv = dropdown;
             }
             else if (genericControls.TryGetValue(property.PropertyType, out var getGenericTextBox))
             {

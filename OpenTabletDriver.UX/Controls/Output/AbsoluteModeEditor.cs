@@ -26,7 +26,7 @@ namespace OpenTabletDriver.UX.Controls.Output
                         Expand = true,
                         Control = new Group
                         {
-                            Text = "Display",
+                            Text = Language.T("Display"),
                             Content = displayAreaEditor = new DisplayAreaEditor(() => HandleAspectRatioLock(displayAreaEditor, EventArgs.Empty))
                             {
                                 InvalidForegroundError = "Invalid display area.",
@@ -39,7 +39,7 @@ namespace OpenTabletDriver.UX.Controls.Output
                         Expand = true,
                         Control = new Group
                         {
-                            Text = "Tablet",
+                            Text = Language.T("Tablet"),
                             Content = tabletAreaEditor = new TabletAreaEditor
                             {
                                 InvalidForegroundError = "Invalid tablet area.",
@@ -50,11 +50,11 @@ namespace OpenTabletDriver.UX.Controls.Output
                 }
             };
 
-            tabletAreaEditor.ContextMenu.Items.GetSubmenu("Resize").Items.AddRange(
+            tabletAreaEditor.ContextMenu.Items.GetSubmenu(Language.T("Resize")).Items.AddRange(
                 [
                     new ActionCommand
                     {
-                        MenuText = "Full area",
+                        MenuText = Language.T("Full area"),
                         Action = () =>
                         {
                             Vector2 tabletSize = new Vector2(tabletAreaEditor.FullAreaBounds!.Value.Width, tabletAreaEditor.FullAreaBounds!.Value.Height);
@@ -68,7 +68,7 @@ namespace OpenTabletDriver.UX.Controls.Output
                     },
                     new ActionCommand
                     {
-                        MenuText = "Quarter area",
+                        MenuText = Language.T("Quarter area"),
                         Action = () =>
                         {
                             Vector2 tabletSize = new Vector2(tabletAreaEditor.FullAreaBounds!.Value.Width, tabletAreaEditor.FullAreaBounds!.Value.Height);
@@ -211,7 +211,9 @@ namespace OpenTabletDriver.UX.Controls.Output
 
             if (tryHeightFirst)
             {
-                var fullHeight = tabletAreaEditor.FullAreaBounds!.Value.Height;
+                var bounds = tabletAreaEditor.FullAreaBounds!.Value;
+                var fullHeight = GetLargestRectInRotatedRectRatioLocked(
+                    new Vector2(bounds.Width, bounds.Height), tabletAreaEditor.Area!.Rotation, displayRatio).Y;
                 var scaledHeight = displayHeight.DataValue / displayWidth.DataValue * tabletWidth.DataValue;
                 if (scaledHeight > fullHeight)
                 {
@@ -225,7 +227,9 @@ namespace OpenTabletDriver.UX.Controls.Output
             }
             else if (tryWidthFirst)
             {
-                var fullWidth = tabletAreaEditor.FullAreaBounds!.Value.Width;
+                var bounds = tabletAreaEditor.FullAreaBounds!.Value;
+                var fullWidth = GetLargestRectInRotatedRectRatioLocked(
+                    new Vector2(bounds.Width, bounds.Height), tabletAreaEditor.Area!.Rotation, displayRatio).X;
                 var scaledWidth = displayWidth.DataValue / displayHeight.DataValue * tabletHeight.DataValue;
                 if (scaledWidth > fullWidth)
                 {

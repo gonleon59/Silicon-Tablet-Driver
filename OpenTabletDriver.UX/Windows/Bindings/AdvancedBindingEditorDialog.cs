@@ -12,7 +12,7 @@ namespace OpenTabletDriver.UX.Windows.Bindings
     {
         public AdvancedBindingEditorDialog(PluginSettingStore? currentBinding = null)
         {
-            Title = "Advanced Binding Editor";
+            Title = Language.T("Advanced Binding Editor");
             Result = new AdvancedBindingEditorDialogResult(currentBinding, AdvancedBindingEditorDialogAction.Close);
             Padding = 5;
             Size = new Eto.Drawing.Size(500, 450);
@@ -25,7 +25,7 @@ namespace OpenTabletDriver.UX.Windows.Bindings
                 {
                     new Group
                     {
-                        Text = "Type",
+                        Text = Language.T("Type"),
                         Content = bindingTypeDropDown = new TypeDropDown<IBinding>()
                     },
                     new StackLayoutItem
@@ -61,7 +61,7 @@ namespace OpenTabletDriver.UX.Windows.Bindings
                                     Expand = true,
                                     Control = new Button(ClearBinding)
                                     {
-                                        Text = "Clear"
+                                        Text = Language.T("Clear")
                                     }
                                 },
                                 new StackLayoutItem
@@ -69,7 +69,7 @@ namespace OpenTabletDriver.UX.Windows.Bindings
                                     Expand = true,
                                     Control = new Button(ApplyBinding)
                                     {
-                                        Text = "Apply"
+                                        Text = Language.T("Apply")
                                     }
                                 }
                             }

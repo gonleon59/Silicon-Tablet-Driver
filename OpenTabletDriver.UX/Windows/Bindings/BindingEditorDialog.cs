@@ -12,7 +12,7 @@ namespace OpenTabletDriver.UX.Windows.Bindings
     {
         public BindingEditorDialog(PluginSettingStore? currentBinding = null)
         {
-            Title = "Binding Editor";
+            Title = Language.T("Binding Editor");
             Result = currentBinding;
 
             this.Content = new StackLayout
@@ -43,7 +43,7 @@ namespace OpenTabletDriver.UX.Windows.Bindings
                                 Expand = true,
                                 Control = new Button(ClearBinding)
                                 {
-                                    Text = "Clear"
+                                    Text = Language.T("Clear")
                                 }
                             },
                             new StackLayoutItem
@@ -51,7 +51,7 @@ namespace OpenTabletDriver.UX.Windows.Bindings
                                 Expand = true,
                                 Control = new Button(ApplyBinding)
                                 {
-                                    Text = "Apply"
+                                    Text = Language.T("Apply")
                                 }
                             }
                         }

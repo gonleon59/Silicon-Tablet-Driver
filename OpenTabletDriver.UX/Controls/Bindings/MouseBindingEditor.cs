@@ -19,15 +19,15 @@ namespace OpenTabletDriver.UX.Controls.Bindings
                     {
                         new Group
                         {
-                            Text = "Mouse Buttons",
+                            Text = Language.T("Mouse Buttons"),
                             Content = mouseButtons = new MouseBindingDisplayList
                             {
-                                Prefix = "Mouse Binding"
+                                Prefix = Language.T("Mouse Binding")
                             }
                         },
                         new Group
                         {
-                            Text = "Mouse Scrollwheel",
+                            Text = Language.T("Mouse Scrollwheel"),
                             Content = new StackLayout
                             {
                                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
@@ -36,14 +36,14 @@ namespace OpenTabletDriver.UX.Controls.Bindings
                                 {
                                     new Group
                                     {
-                                        Text = "Scroll Up",
+                                        Text = Language.T("Scroll Up"),
                                         Orientation = Orientation.Horizontal,
                                         ExpandContent = false,
                                         Content = scrollUp = new BindingDisplay()
                                     },
                                     new Group
                                     {
-                                        Text = "Scroll Down",
+                                        Text = Language.T("Scroll Down"),
                                         Orientation = Orientation.Horizontal,
                                         ExpandContent = false,
                                         Content = scrollDown = new BindingDisplay()

@@ -11,10 +11,10 @@ namespace OpenTabletDriver.UX.Controls.Bindings
         {
             wheelButtonGroup = new Group
             {
-                Text = "Wheel Buttons",
+                Text = Language.T("Wheel Buttons"),
                 Content = wheelButtons = new BindingDisplayList
                 {
-                    Prefix = "Wheel Button Binding"
+                    Prefix = Language.T("Wheel Button Binding")
                 }
             };
 

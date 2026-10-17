@@ -17,13 +17,13 @@ namespace OpenTabletDriver.UX.Windows
         public DeviceStringReader()
             : base(Application.Instance.MainForm)
         {
-            this.Title = "Device String Reader";
+            this.Title = Language.T("Device String Reader");
             this.Icon = App.Logo.WithSize(App.Logo.Size);
             this.ClientSize = new Size(400, 410);
 
             var sendRequestButton = new Button
             {
-                Text = "Send Request",
+                Text = Language.T("Send Request"),
             };
 
             sendRequestButton.Click += async (_, _) => await SendRequestWithTimeout(stringIndexText.Text,
@@ -34,7 +34,7 @@ namespace OpenTabletDriver.UX.Windows
 
             var sendRequestAllStringsButton = new Button
             {
-                Text = "Dump All"
+                Text = Language.T("Dump All")
             };
 
             sendRequestAllStringsButton.Click += SendRequestAllStrings;
@@ -290,14 +290,14 @@ namespace OpenTabletDriver.UX.Windows
 
         private readonly CheckBox requireReconnect = new()
         {
-            Text = "Require reconnect on fail",
+            Text = Language.T("Require reconnect on fail"),
             Checked = false,
             ToolTip = "Pauses string dump with a pop-up box if any string dump errors occur",
         };
 
         private readonly CheckBox requestDangerous = new()
         {
-            Text = "Dump potentially dangerous strings",
+            Text = Language.T("Dump potentially dangerous strings"),
             Checked = false,
             ToolTip = "Requests all strings in a string dump even if they are known to likely damage or disrupt usage of the tablet",
         };
