@@ -1,8 +1,8 @@
-name: Bamboo macOS preview
+name: Silicon Tablet Driver macOS preview
 on:
   workflow_dispatch:
   push:
-    branches: [0.6.x, main]
+    branches: [silicon-preview, 0.6.x, main]
   pull_request:
     paths:
       - '**/*.cs'
@@ -33,7 +33,7 @@ jobs:
           "$RUNNER_TEMP/bamboo-numeric-tests"
       - run: brew install bash coreutils
       - name: Package ARM64
-        run: OTD_BUILD_NUMBER=${{ github.run_number }} VERSION_SUFFIX=-bamboo-preview /opt/homebrew/bin/bash build.sh --runtime osx-arm64 --signed true --output release-artifacts
+        run: OTD_BUILD_NUMBER=${{ github.run_number }} VERSION_SUFFIX=-silicon-preview /opt/homebrew/bin/bash build.sh --runtime osx-arm64 --signed true --output release-artifacts
       - name: Verify package
         run: |
           codesign --verify --deep --strict release-artifacts/OpenTabletDriver.app
@@ -42,7 +42,7 @@ jobs:
           shasum -a 256 *.tar.gz > SHA256SUMS
       - uses: actions/upload-artifact@v7
         with:
-          name: bamboo-macos-arm64-preview
+          name: silicon-tablet-driver-macos-arm64-preview
           path: |
             release-artifacts/*.tar.gz
             release-artifacts/SHA256SUMS
