@@ -7,6 +7,7 @@ using Eto.Drawing;
 using Eto.Forms;
 using OpenTabletDriver.Desktop.Profiles;
 using OpenTabletDriver.Plugin.Tablet;
+using OpenTabletDriver.UX.RPC;
 
 namespace OpenTabletDriver.UX.Controls
 {
@@ -54,7 +55,26 @@ namespace OpenTabletDriver.UX.Controls
 
             App.Driver.TabletsChanged += HandleTabletsChanged;
             // ReSharper disable once AsyncVoidMethod
-            Application.Instance.AsyncInvoke(async void () => HandleTabletsChanged(this, await App.Driver.Instance!.GetTablets()));
+            Application.Instance.AsyncInvoke(async void () =>
+            {
+                var tablets = await TabletQuery.GetConnectedTablets(App.Driver);
+                if (!updatesStopped && tablets != null) HandleTabletsChanged(this, tablets);
+            });
+        }
+
+        private bool updatesStopped;
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) StopUpdates();
+            base.Dispose(disposing);
+        }
+
+        public void StopUpdates()
+        {
+            updatesStopped = true;
+            App.Driver.TabletsChanged -= HandleTabletsChanged;
+            tabletSwitcher.StopUpdates();
         }
 
         private StackLayout layout;
@@ -70,7 +90,7 @@ namespace OpenTabletDriver.UX.Controls
 
         private void HandleTabletsChanged(object? sender, IEnumerable<TabletReference> tablets)
         {
-            tabletSwitcher.HandleTabletsChanged(sender, [.. tablets]);
+            if (!updatesStopped) tabletSwitcher.HandleTabletsChanged(sender, [.. tablets]);
         }
 
         private class TabletSwitcher : DropDown
@@ -81,6 +101,16 @@ namespace OpenTabletDriver.UX.Controls
                 this.DataStore = visibleProfiles;
                 this.SelectedIndex = 0;
             }
+
+            private bool updatesStopped;
+
+            protected override void Dispose(bool disposing)
+            {
+                updatesStopped = true;
+                base.Dispose(disposing);
+            }
+
+            public void StopUpdates() => updatesStopped = true;
 
             private readonly ObservableCollection<Profile> visibleProfiles = [];
 
@@ -100,9 +130,10 @@ namespace OpenTabletDriver.UX.Controls
 
             protected virtual async Task OnProfilesChanged()
             {
+                if (updatesStopped) return;
                 ProfilesChanged?.Invoke(this, EventArgs.Empty);
-                var tablets = await App.Driver.Instance!.GetTablets();
-                HandleTabletsChanged(this, [.. tablets]);
+                var tablets = await TabletQuery.GetConnectedTablets(App.Driver);
+                if (!updatesStopped && tablets != null) HandleTabletsChanged(this, tablets);
             }
 
             public BindableBinding<TabletSwitcher, ProfileCollection> ProfilesBinding

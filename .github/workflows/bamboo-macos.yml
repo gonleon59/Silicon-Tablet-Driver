@@ -33,7 +33,7 @@ jobs:
           "$RUNNER_TEMP/bamboo-numeric-tests"
       - run: brew install bash coreutils
       - name: Package ARM64
-        run: OTD_BUILD_NUMBER=${{ github.run_number }} VERSION_SUFFIX=-silicon-preview /opt/homebrew/bin/bash build.sh --runtime osx-arm64 --signed true --output release-artifacts
+        run: OTD_BUILD_NUMBER=${{ github.run_number }} VERSION_SUFFIX=-bamboo27 /opt/homebrew/bin/bash build.sh --runtime osx-arm64 --signed true --output release-artifacts
       - name: Verify package
         run: |
           codesign --verify --deep --strict release-artifacts/OpenTabletDriver.app

@@ -28,7 +28,7 @@ The Bamboo workflow builds/tests and uploads workflow artifacts; it does not pub
 - Attach ARM64 archive, SHA256 checksum, matching source archive and change notes to the same tag. Keep generated binaries out of Git history.
 - Exclude diagnostics, user configurations, signing credentials, certificates, original private context files, device serials and machine-specific paths.
 - The inherited tag-release workflow is restricted to the upstream repository so a fork cannot accidentally publish their NuGet workflow. Review all other workflows before enabling them.
-- A human review and explicit publication decision are still required. No GitHub repository or release has been created by preparing these files.
+- Source publication was authorized and the public fork is available at https://github.com/gonleon59/Silicon-Tablet-Driver. Workflow artifacts are experimental builds; a separate GitHub Release and independent application identity remain in preparation.
 
 ## Review focus
 

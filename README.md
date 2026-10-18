@@ -12,9 +12,18 @@ English · [Русский](README_RU.md)
 
 **Experimental preview.** Development builds have been tested locally with a CTH-661 on an Apple Silicon Mac. Other tablets, Intel Macs, and other operating systems have not been validated for this fork.
 
-The development baseline is **bamboo26**. Silicon Tablet Driver is the public project name; existing build scripts and applications still use OpenTabletDriver names. Public packaging and a separate application identity are being prepared.
+The development baseline is **bamboo27**. Silicon Tablet Driver is the public project name; existing build scripts and applications still use OpenTabletDriver names. Public packaging and a separate application identity are being prepared.
 
 This is an independent community project, not an official OpenTabletDriver release, Wacom driver, or Apple product.
+
+## Latest fix — bamboo27 (18 October 2026)
+
+- Fixed a daemon crash when overlapping USB/HID device changes modified a list during enumeration. Device notifications and discovery now use stable snapshots with synchronized updates.
+- Corrected before/after notifications when device hubs are connected or disconnected.
+- Tablet-list refreshes handle a lost daemon connection without an unhandled application-error dialog; disconnected panels stop receiving updates. Startup and log forwarding also handle transport loss.
+- Added 11 regression tests, including device changes during active enumeration and an interrupted RPC request. Five tests reproduce failures on the previous discovery code; the updated full suite passes 2,233 tests with 6 existing skips.
+
+See [change details and verification limits](docs/BAMBOO_HOTPLUG_FIX.md). Display sleep, system sleep/wake, and physical dock reconnection still require hardware verification; the fix does not establish which action triggered the reported device changes.
 
 ## Features
 

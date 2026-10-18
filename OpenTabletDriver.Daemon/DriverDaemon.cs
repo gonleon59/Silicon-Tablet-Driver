@@ -48,22 +48,22 @@ namespace OpenTabletDriver.Daemon
             Driver.TabletsChanged += (sender, e) => TabletsChanged?.Invoke(sender, e);
             Driver.CompositeDeviceHub.DevicesChanged += async (sender, args) =>
             {
-                if (!args.Additions.Any()) return;
-
-                // only re-initialize pipeline if a relevant device is plugged in
-                if (args.Additions.Any(x => Driver.KnownVendorIDs.Contains(x.VendorID)))
+                try
                 {
-                    try
+                    if (!args.Additions.Any()) return;
+
+                    // Include filtering in the async event's exception boundary.
+                    if (args.Additions.Any(x => Driver.KnownVendorIDs.Contains(x.VendorID)))
                     {
                         await DetectTablets();
                         await SetSettings(Settings);
                     }
-                    catch (Exception error) { Log.Exception(error); }
+                    else
+                    {
+                        Log.Write(nameof(DriverDaemon), "No known tablets added, skipping detect", LogLevel.Debug);
+                    }
                 }
-                else
-                {
-                    Log.Write(nameof(DriverDaemon), "No known tablets added, skipping detect", LogLevel.Debug);
-                }
+                catch (Exception error) { Log.Exception(error); }
             };
 
             foreach (var driverInfo in DriverInfo.GetDriverInfos())

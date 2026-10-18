@@ -18,6 +18,7 @@ using OpenTabletDriver.Plugin;
 using OpenTabletDriver.Plugin.Logging;
 using OpenTabletDriver.Plugin.Tablet;
 using OpenTabletDriver.UX.Controls;
+using StreamJsonRpc;
 
 namespace OpenTabletDriver.UX
 {
@@ -51,6 +52,14 @@ namespace OpenTabletDriver.UX
 
             App.Driver.Connected += HandleDaemonConnected;
             App.Driver.Disconnected += HandleDaemonDisconnected;
+            App.Driver.Resynchronize += HandleDaemonResynchronize;
+            App.Driver.TabletsChanged += (sender, tablets) =>
+            {
+                if (!App.Driver.IsConnected) return;
+                var list = tablets.ToArray();
+                BambooConnected = list.Any(t => t.Properties.Name == "Wacom CTH-661");
+                SetTitle(list);
+            };
 
             Application.Instance.InvokeAsync(ConnectToDaemon);
         }
@@ -445,64 +454,65 @@ namespace OpenTabletDriver.UX
         // ReSharper disable once AsyncVoidMethod
         private void HandleDaemonConnected(object? sender, EventArgs e) => Application.Instance.AsyncInvoke(async void () =>
         {
-            Debug.Assert(App.Driver.IsConnected);
-            // Hook events after the instance is (re)instantiated
-            Log.Output += LogToDriver;
-            App.Driver.TabletsChanged += (sender, tablet) =>
+            try
             {
-                var list=tablet.ToArray(); BambooConnected=list.Any(t=>t.Properties.Name=="Wacom CTH-661"); SetTitle(list);
-            };
+                Debug.Assert(App.Driver.IsConnected);
+                Log.Output += LogToDriver;
 
-            // Load full menu
-            this.Menu = fullMenu;
+                // Load full menu
+                this.Menu = fullMenu;
 
-            // Load the application information from the daemon
-            AppInfo.Current = await App.Driver.Instance.GetApplicationInfo();
+                // Load the application information from the daemon
+                AppInfo.Current = await App.Driver.Instance.GetApplicationInfo();
 
-            AppInfo.PluginManager = new DesktopPluginManager();
-            AppInfo.PresetManager = new PresetManager();
+                AppInfo.PluginManager = new DesktopPluginManager();
+                AppInfo.PresetManager = new PresetManager();
 
-            // Load any new plugins
-            AppInfo.PluginManager.Load();
+                // Load any new plugins
+                AppInfo.PluginManager.Load();
 
-            // Show the startup greeter
-            if (!File.Exists(AppInfo.Current.SettingsFile) && this.WindowState != WindowState.Minimized)
-                App.Current.StartupGreeterWindow.Show();
+                // Show the startup greeter
+                if (!File.Exists(AppInfo.Current.SettingsFile) && this.WindowState != WindowState.Minimized)
+                    App.Current.StartupGreeterWindow.Show();
 
-            // Synchronize settings
-            await SyncSettings();
-            App.Driver.Resynchronize += async (sender, e) => await SyncSettings();
+                // Synchronize settings
+                await SyncSettings();
 
-            // Set window content
-            base.Content = new TabletSwitcherPanel
-            {
-                CommandsControl = new StackLayout
+                // Set window content
+                base.Content = new TabletSwitcherPanel
                 {
-                    Orientation = Orientation.Horizontal,
-                    HorizontalContentAlignment = HorizontalAlignment.Right,
-                    Spacing = 5,
-                    Items =
+                    CommandsControl = new StackLayout
                     {
-                        Language.CreateButton(),
-                        new Button((_, _) => App.Current.InputTestWindow.Show()) { Text = Language.T("Pen and touch test") },
-                        saveButton,
-                        applyButton,
+                        Orientation = Orientation.Horizontal,
+                        HorizontalContentAlignment = HorizontalAlignment.Right,
+                        Spacing = 5,
+                        Items =
+                        {
+                            Language.CreateButton(),
+                            new Button((_, _) => App.Current.InputTestWindow.Show()) { Text = Language.T("Pen and touch test") },
+                            saveButton,
+                            applyButton,
+                        }
                     }
-                }
-            };
+                };
 
-            // Update preset options in File menu and tray icon
-            await RefreshPresets();
+                // Update preset options in File menu and tray icon
+                await RefreshPresets();
 
-            // Update title to new instance
-            var tablets=(await App.Driver.Instance.GetTablets()).ToArray();
-            SetTitle(tablets);
+                // Update title to new instance
+                var tablets=(await App.Driver.Instance.GetTablets()).ToArray();
+                SetTitle(tablets);
 
-            // Having a mismatch between the version of the daemon and the application will cause issues
-            MatchDaemonVersion();
-            BambooConnected=tablets?.Any(t=>t.Properties.Name=="Wacom CTH-661") ?? false;
-            NativeSettingsReady=true;
-            if (OpenSettingsWhenReady) { OpenSettingsWhenReady=false; ShowSettingsWindow(); }
+                // Having a mismatch between the version of the daemon and the application will cause issues
+                MatchDaemonVersion();
+                BambooConnected=tablets?.Any(t=>t.Properties.Name=="Wacom CTH-661") ?? false;
+                NativeSettingsReady=true;
+                if (OpenSettingsWhenReady) { OpenSettingsWhenReady=false; ShowSettingsWindow(); }
+            }
+            // The disconnected handler owns recovery; transport loss is not an application error.
+            catch (ConnectionLostException) { }
+            catch (ObjectDisposedException) when (!App.Driver.IsConnected) { }
+            catch (IOException) when (!App.Driver.IsConnected) { }
         });
 
         private Button saveButton;
@@ -510,8 +520,23 @@ namespace OpenTabletDriver.UX
 
         private static async void LogToDriver(object? sender, LogMessage message)
         {
-            if (App.Driver.IsConnected)
-                await App.Driver.Instance.WriteMessage(message);
+            try
+            {
+                var daemon = App.Driver.Instance;
+                if (daemon != null && App.Driver.IsConnected)
+                    await daemon.WriteMessage(message);
+            }
+            catch (ConnectionLostException) { }
+            catch (ObjectDisposedException) { }
+            catch (IOException) { }
+        }
+
+        private static async void HandleDaemonResynchronize(object? sender, EventArgs e)
+        {
+            try { if (App.Driver.IsConnected) await SyncSettings(); }
+            catch (ConnectionLostException) { }
+            catch (ObjectDisposedException) when (!App.Driver.IsConnected) { }
+            catch (IOException) when (!App.Driver.IsConnected) { }
         }
 
         private void HandleDaemonDisconnected(object? sender, EventArgs e)
@@ -525,7 +550,10 @@ namespace OpenTabletDriver.UX
             // Hide all controls until reconnected
             Application.Instance.Invoke(() =>
             {
+                var previousContent = base.Content;
                 base.Content = placeholder;
+                // Save/Apply buttons are reused on reconnect; detach updates without disposing them.
+                if (previousContent is TabletSwitcherPanel panel) panel.StopUpdates();
                 base.Menu = null;
                 SetTitle(); // reset title to avoid last connected tablets from showing up
 

@@ -1,5 +1,16 @@
 # Bamboo preview changes
 
+## Bamboo27 — 18 October 2026
+
+- Fix the USB/HID discovery race behind `Collection was modified; enumeration operation may not execute`: copy device-event inputs, synchronize endpoint updates and debounce state, and return detached discovery snapshots.
+- Preserve the last published device baseline across notification bursts; invalidate pending debounce callbacks after a hub membership change. Correct the reversed previous/current lists in hub notifications.
+- Include hotplug vendor filtering in the daemon async-event exception boundary.
+- Treat lost RPC connections as an unavailable tablet refresh rather than an unhandled GUI exception; detach disconnected panels and stop their pending updates. Guard asynchronous GUI initialization, resynchronization and log forwarding against transport loss.
+- Add 11 hardware-independent regression tests; five discovery tests fail against the prior implementation. Full local result: 2,233 passed, 6 existing configuration skips, 0 failures.
+- See [reproduction, changes and verification limits](BAMBOO_HOTPLUG_FIX.md). A display-sleep trigger has not been established; physical sleep/wake and dock tests remain pending.
+
+## Earlier previews
+
 - Bamboo26 incorporates the bamboo25 review fixes: rejected saves propagate errors, daemon-owned saves use revision checks and bounded rollback, GUI/preset/CLI writes are coordinated, external file edits are detected, slow scrolling retains displacement, replaced contacts cancel taps, and sparse bindings are read without mutation. GUI, daemon and CLI are rebuilt together. Native Command-Q and the Quit commands share busy/unsaved-draft protection and managed process cleanup. The locally installed build was verified on 15 October 2026; public identity and distribution packaging are still in preparation.
 
 - Silicon Tablet Driver is the public project name. README.md and README_RU.md describe the experimental CTH-661 scope, local bamboo26 validation, build requirements and remaining gaps. Development application and IPC names currently retain OpenTabletDriver compatibility.

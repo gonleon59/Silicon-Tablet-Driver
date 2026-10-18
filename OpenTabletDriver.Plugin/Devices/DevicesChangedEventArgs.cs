@@ -8,8 +8,9 @@ namespace OpenTabletDriver.Plugin.Devices
     {
         public DevicesChangedEventArgs(IEnumerable<IDeviceEndpoint> oldList, IEnumerable<IDeviceEndpoint> newList)
         {
-            Previous = oldList;
-            Current = newList;
+            // Event consumers may enumerate these after the producer changes its lists.
+            Previous = Array.AsReadOnly(oldList.ToArray());
+            Current = Array.AsReadOnly(newList.ToArray());
         }
 
         public IEnumerable<IDeviceEndpoint> Previous { get; }
