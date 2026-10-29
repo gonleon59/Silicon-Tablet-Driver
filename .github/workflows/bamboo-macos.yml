@@ -31,9 +31,13 @@ jobs:
         run: |
           swiftc -swift-version 5 eng/macos/BambooNumericInput.swift eng/macos/tests/NumericInputTests.swift -o "$RUNNER_TEMP/bamboo-numeric-tests"
           "$RUNNER_TEMP/bamboo-numeric-tests"
+      - name: Verify native settings model
+        run: |
+          swiftc -swift-version 5 eng/macos/BambooSettings.swift eng/macos/BambooSettingsSearch.swift eng/macos/BambooNumericInput.swift eng/macos/tests/SettingsModelTests.swift -o "$RUNNER_TEMP/bamboo-model-tests"
+          "$RUNNER_TEMP/bamboo-model-tests"
       - run: brew install bash coreutils
       - name: Package ARM64
-        run: OTD_BUILD_NUMBER=${{ github.run_number }} VERSION_SUFFIX=-bamboo27 /opt/homebrew/bin/bash build.sh --runtime osx-arm64 --signed true --output release-artifacts
+        run: OTD_BUILD_NUMBER=${{ github.run_number }} VERSION_SUFFIX=-bamboo30 /opt/homebrew/bin/bash build.sh --runtime osx-arm64 --signed true --output release-artifacts
       - name: Verify package
         run: |
           codesign --verify --deep --strict release-artifacts/OpenTabletDriver.app

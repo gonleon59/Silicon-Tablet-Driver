@@ -12,18 +12,21 @@ English · [Русский](README_RU.md)
 
 **Experimental preview.** Development builds have been tested locally with a CTH-661 on an Apple Silicon Mac. Other tablets, Intel Macs, and other operating systems have not been validated for this fork.
 
-The development baseline is **bamboo27**. Silicon Tablet Driver is the public project name; existing build scripts and applications still use OpenTabletDriver names. Public packaging and a separate application identity are being prepared.
+The development baseline is **bamboo30**. Silicon Tablet Driver is the public project name; existing build scripts and applications still use OpenTabletDriver names. Public packaging and a separate application identity are being prepared.
 
 This is an independent community project, not an official OpenTabletDriver release, Wacom driver, or Apple product.
 
-## Latest fix — bamboo27 (18 October 2026)
+## Latest changes — bamboo30 (29 October 2026)
 
-- Fixed a daemon crash when overlapping USB/HID device changes modified a list during enumeration. Device notifications and discovery now use stable snapshots with synchronized updates.
-- Corrected before/after notifications when device hubs are connected or disconnected.
-- Tablet-list refreshes handle a lost daemon connection without an unhandled application-error dialog; disconnected panels stop receiving updates. Startup and log forwarding also handle transport loss.
-- Added 11 regression tests, including device changes during active enumeration and an interrupted RPC request. Five tests reproduce failures on the previous discovery code; the updated full suite passes 2,233 tests with 6 existing skips.
+This update includes all local bamboo28–bamboo30 changes since published bamboo27:
 
-See [change details and verification limits](docs/BAMBOO_HOTPLUG_FIX.md). Display sleep, system sleep/wake, and physical dock reconnection still require hardware verification; the fix does not establish which action triggered the reported device changes.
+- Corrected pen positioning after switching between right- and left-handed landscape orientations. The vertical comfortable-area preset no longer applies to landscape modes.
+- Orientation remains editable after Save. Uncropped vertical mode, selected monitors and margins survive saving; unrelated edits preserve manually configured geometry.
+- Standard landscape pen margins now default to **4.5 mm left/right and 5 mm top/bottom**, giving CTH-661 a **207.48 × 127 mm** pen area. These are half the initial bamboo29 margins (9/10 mm).
+- Touch is independent of pen margins and uses the complete **190 × 130 mm** hardware touch area. This is smaller than the **216.5 × 137 mm** pen area; software cannot extend touch into strips without a touch sensor.
+- Added actual coordinate-transform, profile-persistence, orientation-editability and touch-independence checks. GitHub Actions now tests the real Swift settings model and packages bamboo30.
+
+**Tested on macOS 27.2 with a Mac mini M4 and Wacom Bamboo CTH-661.** [Complete update notes, validation and limitations](docs/BAMBOO30_UPDATE.md) · [Version history](docs/BAMBOO_CHANGELOG.md).
 
 ## Features
 
@@ -46,7 +49,7 @@ Some gestures use application keyboard shortcuts and depend on the active applic
 | Computer | Mac with Apple Silicon; native ARM64 |
 | macOS | Build target: macOS 14 or later |
 | Primary tablet | Wacom Bamboo CTH-661, USB |
-| Local hardware validation | CTH-661 on Apple Silicon, macOS 27.0.1 |
+| Local hardware validation | CTH-661 on Apple Silicon, macOS 27.2 |
 | Runtime | Packaged builds include .NET; Rosetta is not required |
 
 The minimum build target does not mean every macOS version from 14 onward has been tested. Upstream's device support does not establish compatibility with this fork.
@@ -81,15 +84,16 @@ Pinch uses zoom shortcuts, not continuous native magnification. Rotation is rest
 
 ## Validation and known gaps
 
-Local bamboo26 verification on **15 October 2026** reported:
+Local bamboo30 verification on **29 October 2026, macOS 27.2**:
 
-- 2,222 C# tests passed, 6 existing configuration tests skipped, 0 failures.
-- 18 Swift numeric-input scenarios, 12 search checks, and 12 settings-model checks passed.
-- ARM64 packaging, signature integrity, settings save/restore, permissions, and clean quit/relaunch were checked locally.
+- 2,251 C# tests passed, 6 existing configuration tests skipped, 0 failures.
+- 22 Swift settings-model checks, 18 numeric-input checks and 12 search checks passed.
+- ARM64 packaging and signature integrity were checked. The user confirmed pen positioning after the orientation fix; saving and continued editing were checked in the native window.
+- Pressure changes in tablet reports and reaches a separate AppKit window as values from 0 to 1. **In Linearity Curve 7.1.1, the user did not obtain pressure-dependent width on a new Brush stroke. The cause is unresolved; Curve compatibility is not claimed fixed.**
 
-These results belong to that build and environment. A changed public identity or signing method needs fresh validation.
+Results apply to this build and environment. Physical landscape positioning was checked on bamboo28; bamboo30 changes the margins, with automated checks covering both landscape modes. Touch independence from pen margins was checked in software; exact physical sensor boundaries were not measured.
 
-Physical pen/touch behavior after the latest fixes, Adobe pressure/eraser behavior, clean-account installation, sleep/reboot/login, and repeated USB reconnection remain to be verified. One discard-and-quit dialog branch remains unconfirmed after UI automation interruptions. Production readiness and hardware certification are not claimed.
+Adobe pressure/eraser support, clean-account installation, a full sleep/wake/reboot/login cycle, and repeated physical USB/dock reconnection remain unverified. One discard-and-quit dialog branch remains unconfirmed. A changed public identity or signing method needs fresh validation. Production readiness and hardware certification are not claimed.
 
 ## Build from source
 

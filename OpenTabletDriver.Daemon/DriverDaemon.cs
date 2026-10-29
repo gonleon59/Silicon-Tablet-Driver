@@ -551,7 +551,7 @@ namespace OpenTabletDriver.Daemon
             {
                 settings.Display = TabletMappingPreferences.DisplayArea(screen.Displays, preferences.DisplayIdentifiers);
                 settings.Tablet = preferences.TabletArea(dev.Properties.Specifications.Digitizer, settings.Display);
-                settings.LockAspectRatio = preferences.PreserveProportions;
+                settings.LockAspectRatio = preferences.UsesComfortableArea && preferences.PreserveProportions;
             }
             string group = dev.Properties.Name;
             absoluteMode.Output = settings.Display.Area;

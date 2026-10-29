@@ -20,9 +20,13 @@ Remove the trigger with `bash eng/macos/uninstall-connection-monitor.sh`. This d
 
 ## Comfortable mapping
 
-Choose right-handed (buttons left, 0°), left-handed (buttons right, 180°), or vertical (buttons top, 270°). Vertical mode disables the four body buttons; pen buttons remain active. Working-area presets preserve screen proportions, leave an adjustable edge margin and can shift the area toward the user. Check one or several monitors, or All monitors. Several selected screens are mapped to their bounding rectangle; spaces between screens remain geometric gaps. A missing saved display falls back to connected screens. Press Refresh monitors after a display arrangement change, then Save / Apply.
+Choose right-handed (buttons left, 0°), left-handed (buttons right, 180°), or vertical (buttons top, 270°). The horizontal presets use pen margins of 4.5 mm on the left/right and 5 mm on the top/bottom; they do not enable the vertical comfortable-area preset. Vertical mode disables the four body buttons; pen buttons remain active. The vertical comfortable-area preset can preserve screen proportions, leave an adjustable edge margin and shift the area toward the user. Check one or several monitors, or All monitors. Several selected screens are mapped to their bounding rectangle; spaces between screens remain geometric gaps. A missing saved display falls back to connected screens. Press Refresh monitors after a display arrangement change, then Save / Apply.
 
 Use Edit area manually before changing the detailed area editors below; this disables preset recalculation. The monitor and comfortable controls re-enable presets when used again. Pen mapping is absolute; touch navigation is relative.
+
+## Physical touch area
+
+CTH-661 has different physical sensing areas: **190 × 130 mm for touch**, versus **216.5 × 137 mm for the pen**. See the [Wacom Bamboo manual, page 75](https://cdn.wacom.com/u/productsupport/manuals/Bamboo2/User%27s%20Manual.pdf). The full touch-coordinate range is available independently of pen margins, but software cannot extend the capacitive sensor into the additional pen-only edge strips. “Full touch surface” means the entire hardware touch-active area, not the entire pen-active area or plastic surface.
 
 ## Controls
 
@@ -39,7 +43,7 @@ Use Edit area manually before changing the detailed area editors below; this dis
 
 All gestures use two contacts. No three/four-finger gestures, Force Touch, or system-native touchpad identity are provided. Keep the pen away while using fingers; pen proximity suppresses touch briefly.
 
-Open Pen and touch test to see pressure, eraser/pen identity, both pen buttons, four body buttons and contact count. Test pressure in the intended drawing application before relying on it for artwork.
+Open Pen and touch test to see pressure, eraser/pen identity, both pen buttons, four body buttons and contact count. Test pressure in the intended drawing application before relying on it for artwork. A changing raw pressure value proves the tablet reports force; a receiving AppKit test window is a separate check that macOS applications receive pressure. Neither alone certifies every application's support for this driver's synthetic tablet events. In a local Curve 7.1.1 test on 29 October 2026, the tablet and AppKit pressure checks passed, but the user reported no pressure-dependent width with Curve's Brush tool; no Pressure switch was found in that version's Mac Brush Editor or general settings. Compatibility with that Curve workflow remains unconfirmed.
 
 ## Privacy and troubleshooting
 

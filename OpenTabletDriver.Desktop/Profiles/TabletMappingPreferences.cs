@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Newtonsoft.Json;
 using OpenTabletDriver.Plugin.Platform.Display;
 using OpenTabletDriver.Plugin.Tablet;
 
@@ -9,8 +10,15 @@ namespace OpenTabletDriver.Desktop.Profiles;
 
 public sealed class TabletMappingPreferences
 {
+    public const float DefaultHorizontalSideMargin = 4.5f;
+    public const float DefaultHorizontalTopBottomMargin = 5;
     public string[] DisplayIdentifiers { get; set; } = [];
     public int Rotation { get; set; }
+    public bool UseComfortableArea { get; set; } = true;
+    [JsonIgnore]
+    public bool UsesComfortableArea => Rotation is 90 or 270 && UseComfortableArea;
+    public float HorizontalSideMargin { get; set; } = DefaultHorizontalSideMargin;
+    public float HorizontalTopBottomMargin { get; set; } = DefaultHorizontalTopBottomMargin;
     public bool NearUser { get; set; } = true;
     public float EdgeMargin { get; set; } = 8;
     public float AreaScale { get; set; } = 0.85f;
@@ -36,6 +44,15 @@ public sealed class TabletMappingPreferences
         bool vertical = rotation is 90 or 270;
         float maxWidth = vertical ? tablet.Height : tablet.Width;
         float maxHeight = vertical ? tablet.Width : tablet.Height;
+        if (!vertical)
+        {
+            float side = Math.Clamp(float.IsFinite(HorizontalSideMargin) ? HorizontalSideMargin : DefaultHorizontalSideMargin, 0, maxWidth / 3);
+            float topBottom = Math.Clamp(float.IsFinite(HorizontalTopBottomMargin) ? HorizontalTopBottomMargin : DefaultHorizontalTopBottomMargin, 0, maxHeight / 3);
+            maxWidth -= side * 2;
+            maxHeight -= topBottom * 2;
+        }
+        if (!UsesComfortableArea)
+            return new() { Width = maxWidth, Height = maxHeight, X = tablet.Width / 2, Y = tablet.Height / 2, Rotation = rotation };
         float margin = float.IsFinite(EdgeMargin) ? Math.Clamp(EdgeMargin, 0, Math.Min(maxWidth, maxHeight) / 3) : 8;
         maxWidth -= margin * 2;
         maxHeight -= margin * 2;

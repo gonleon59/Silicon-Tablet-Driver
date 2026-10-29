@@ -30,8 +30,7 @@ public sealed class TabletMappingTests
     }
 
     [Theory]
-    [InlineData(0)]
-    [InlineData(180)]
+    [InlineData(90)]
     [InlineData(270)]
     public void ComfortableAreaKeepsProportionsAndMargins(int rotation)
     {
@@ -39,8 +38,8 @@ public sealed class TabletMappingTests
         var preferences = new TabletMappingPreferences { Rotation = rotation };
         var area = preferences.TabletArea(tablet, new AreaSettings { Width = 5120, Height = 2880 });
         Assert.InRange(area.Width / area.Height, 1.7777f, 1.7779f);
-        float halfWidth = rotation == 270 ? area.Height / 2 : area.Width / 2;
-        float halfHeight = rotation == 270 ? area.Width / 2 : area.Height / 2;
+        float halfWidth = rotation is 90 or 270 ? area.Height / 2 : area.Width / 2;
+        float halfHeight = rotation is 90 or 270 ? area.Width / 2 : area.Height / 2;
         Assert.InRange(area.X - halfWidth, 7.999f, 216);
         Assert.InRange(area.X + halfWidth, 0, 208.001f);
         Assert.InRange(area.Y - halfHeight, 7.999f, 137);

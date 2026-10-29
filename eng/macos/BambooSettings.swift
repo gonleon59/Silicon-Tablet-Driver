@@ -8,15 +8,16 @@ private var commandHandler: CommandHandler?
 private var settingsController: SettingsController?
 private var activationObserver: NSObjectProtocol?
 
-private struct DisplayInfo: Codable, Equatable, Identifiable {
+struct DisplayInfo: Codable, Equatable, Identifiable {
     var id: String; var name: String; var width: Double; var height: Double; var x: Double; var y: Double
 }
-private struct Snapshot: Codable, Equatable {
+struct Snapshot: Codable, Equatable {
     var profile: String; var version: String; var language: String; var profileToken: String; var settingsToken: String
     var connected: Bool; var hasProfile: Bool; var inputGranted: Bool; var accessibilityGranted: Bool
     var displays: [DisplayInfo]
-    var useMapping: Bool; var allDisplays: Bool; var displayIds: [String]; var rotation: Int
+    var useMapping: Bool; var hasManualArea: Bool; var mappingEdited: Bool; var allDisplays: Bool; var displayIds: [String]; var rotation: Int
     var areaScale: Double; var edgeMargin: Double; var nearUser: Bool; var proportional: Bool
+    var horizontalSideMargin: Double; var horizontalTopBottomMargin: Double
     var touchEnabled: Bool; var touch: [String: Double]; var flags: [String: Bool]; var commands: [String: Int]
     var hoverSmoothing: Double; var contactSmoothing: Double; var tipThreshold: Double; var eraserThreshold: Double
     var pressureEnabled: Bool; var penButtons: [Int]; var bodyButtons: [Int]
@@ -26,13 +27,51 @@ private func emit(_ value: [String: Any]) {
           let text = String(data: data, encoding: .utf8) else { return }
     text.withCString { callback($0) } // The managed callback copies this string synchronously.
 }
-private final class SettingsModel: ObservableObject {
+final class SettingsModel: ObservableObject {
     @Published var draft: Snapshot
     @Published var page: SettingsPage? = .tablet
     @Published var search = ""
     @Published var revealedSetting: String?
     var searching: Bool { !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-    var searchResults: [SettingsSearchItem] { SettingsSearchIndex.search(search, displayNames: draft.displays.map(\.name)) }
+    var searchResults: [SettingsSearchItem] {
+        let verticalOnly: Set<String> = ["useMapping", "areaScale", "edgeMargin", "nearUser", "proportional"]
+        return SettingsSearchIndex.search(search, displayNames: draft.displays.map(\.name))
+            .filter { comfortableAreaAvailable || !verticalOnly.contains($0.id) }
+    }
+    var comfortableAreaAvailable: Bool { draft.rotation == 270 }
+    var hasManualArea: Bool { draft.hasManualArea && !draft.mappingEdited }
+    func useFullArea() {
+        guard canEditOrientation, [0, 180, 270].contains(draft.rotation) else { return }
+        setOrientation(draft.rotation)
+        draft.useMapping = false
+    }
+    var canEditOrientation: Bool { !busy && draft.hasProfile }
+    var orientation: Binding<Int> {
+        Binding(get: { self.draft.rotation }, set: { self.setOrientation($0) })
+    }
+    func setOrientation(_ rotation: Int) {
+        guard canEditOrientation, [0, 180, 270].contains(rotation) else { return }
+        draft.rotation = rotation
+        draft.mappingEdited = true
+        draft.useMapping = rotation == 270
+        numericDrafts.removeValue(forKey: "areaScale")
+        numericDrafts.removeValue(forKey: "edgeMargin")
+        message = ""
+    }
+    var comfortableArea: Binding<Bool> {
+        Binding(get: { self.comfortableAreaAvailable && self.draft.useMapping }, set: {
+            guard self.comfortableAreaAvailable else { return }
+            self.draft.useMapping = $0; self.draft.mappingEdited = true
+            self.numericDrafts.removeValue(forKey: "areaScale")
+            self.numericDrafts.removeValue(forKey: "edgeMargin")
+        })
+    }
+    var allDisplays: Binding<Bool> {
+        Binding(get: { self.draft.allDisplays }, set: {
+            if !$0 && self.draft.displayIds.isEmpty { self.draft.displayIds = self.draft.displays.map(\.id) }
+            self.draft.allDisplays = $0; self.draft.mappingEdited = true
+        })
+    }
     func reveal(_ item: SettingsSearchItem) {
         page = item.page; search = ""; revealedSetting = item.id
     }
@@ -332,27 +371,30 @@ private struct SettingsView: View {
         Group {
             Section {
                 TabletPreview(model: model).frame(height: 170).frame(maxWidth: .infinity)
-                Picker(model.t("Orientation", "Ориентация"), selection: $model.draft.rotation) {
+                Picker(model.t("Orientation", "Ориентация"), selection: model.orientation) {
                     Text(model.t("Right handed · buttons left", "Правша · кнопки слева")).tag(0)
                     Text(model.t("Left handed · buttons right", "Левша · кнопки справа")).tag(180)
                     Text(model.t("Vertical · buttons top", "Вертикально · кнопки сверху")).tag(270)
-                }.disabled(!model.draft.useMapping).modifier(setting("orientation"))
+                }.disabled(!model.canEditOrientation).modifier(setting("orientation"))
                 if model.draft.rotation == 270 { Text(model.t("The four tablet buttons are disabled in this orientation.", "В этой ориентации четыре кнопки корпуса отключены.")).font(.caption).foregroundStyle(.secondary) }
             }
             Section(model.t("Working area", "Рабочая область")) {
-                Toggle(model.t("Use comfortable area presets", "Использовать удобную рабочую область"), isOn: $model.draft.useMapping).modifier(setting("useMapping"))
-                Group {
-                    slider("areaScale", model.t("Area size", "Размер области"), value: $model.draft.areaScale, range: 0.3...1, unit: "%", multiplier: 100).modifier(setting("areaScale"))
-                    slider("edgeMargin", model.t("Edge margin", "Отступ от края"), value: $model.draft.edgeMargin, range: 0...30, unit: model.t("mm", "мм")).modifier(setting("edgeMargin"))
-                    Toggle(model.t("Move area closer to me", "Сместить область ближе ко мне"), isOn: $model.draft.nearUser).modifier(setting("nearUser"))
-                    Toggle(model.t("Keep screen proportions", "Сохранять пропорции экрана"), isOn: $model.draft.proportional).modifier(setting("proportional"))
-                }.disabled(!model.draft.useMapping)
-                if !model.draft.useMapping { Text(model.t("Your manual area is preserved. Use Advanced Settings to edit its exact dimensions.", "Ручная область сохраняется. Точные размеры доступны в расширенных настройках.")).font(.caption).foregroundStyle(.secondary) }
+                if model.comfortableAreaAvailable {
+                    Toggle(model.t("Use comfortable area presets", "Использовать удобную рабочую область"), isOn: model.comfortableArea).modifier(setting("useMapping"))
+                    Group {
+                        slider("areaScale", model.t("Area size", "Размер области"), value: $model.draft.areaScale, range: 0.3...1, unit: "%", multiplier: 100).modifier(setting("areaScale"))
+                        slider("edgeMargin", model.t("Edge margin", "Отступ от края"), value: $model.draft.edgeMargin, range: 0...30, unit: model.t("mm", "мм")).modifier(setting("edgeMargin"))
+                        Toggle(model.t("Move area closer to me", "Сместить область ближе ко мне"), isOn: $model.draft.nearUser).modifier(setting("nearUser"))
+                        Toggle(model.t("Keep screen proportions", "Сохранять пропорции экрана"), isOn: $model.draft.proportional).modifier(setting("proportional"))
+                    }.disabled(!model.draft.useMapping)
+                    if !model.draft.useMapping { fullAreaNote }
+                } else { fullAreaNote }
             }
             Section(model.t("Displays", "Мониторы")) {
-                Toggle(model.t("All connected displays", "Все подключённые мониторы"), isOn: $model.draft.allDisplays).modifier(setting("allDisplays"))
+                Toggle(model.t("All connected displays", "Все подключённые мониторы"), isOn: model.allDisplays).modifier(setting("allDisplays"))
                 ForEach(model.draft.displays) { display in
                     Toggle(isOn: Binding(get: { model.draft.allDisplays || model.draft.displayIds.contains(display.id) }, set: { enabled in
+                        model.draft.mappingEdited = true
                         if model.draft.allDisplays { model.draft.displayIds = model.draft.displays.map(\.id); model.draft.allDisplays = false }
                         if enabled { if !model.draft.displayIds.contains(display.id) { model.draft.displayIds.append(display.id) } }
                         else { model.draft.displayIds.removeAll { $0 == display.id } }
@@ -360,8 +402,23 @@ private struct SettingsView: View {
                         Label { VStack(alignment: .leading, spacing: 2) { Text(display.name); Text("\(Int(display.width)) × \(Int(display.height))").font(.caption).foregroundStyle(.secondary) } } icon: { Image(systemName: "display").foregroundStyle(.secondary) }
                     }
                 }
-            }.disabled(!model.draft.useMapping).modifier(setting("displays"))
+            }.modifier(setting("displays"))
         }
+    }
+    private var fullAreaNote: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if model.hasManualArea {
+                Text(model.t("Your area from Advanced Settings is preserved.", "Сохранена область из расширенных настроек."))
+                Button(model.t("Use standard working area", "Использовать стандартную рабочую область")) { model.useFullArea() }
+                    .disabled(![0, 180, 270].contains(model.draft.rotation))
+            } else if model.draft.rotation == 0 || model.draft.rotation == 180 {
+                let side = BambooNumericInput.format(model.draft.horizontalSideMargin, multiplier: 1, russian: model.russian)
+                let topBottom = BambooNumericInput.format(model.draft.horizontalTopBottomMargin, multiplier: 1, russian: model.russian)
+                Text(model.t("Standard margins: \(side) mm on the left and right, \(topBottom) mm on the top and bottom.", "Стандартные отступы: слева и справа — \(side) мм, сверху и снизу — \(topBottom) мм."))
+            } else {
+                Text(model.t("The entire active tablet surface is used, without cropping or edge margins.", "Используется вся активная поверхность планшета, без усечения и отступов."))
+            }
+        }.font(.caption).foregroundStyle(.secondary)
     }
     private var touchPage: some View {
         Group {
@@ -592,10 +649,19 @@ private struct BambooDiagram: View {
             }
             tablet.fill(Path(roundedRect: CGRect(x: -0.5, y: -63, width: 1, height: 10), cornerRadius: 0.5), with: .color(.white.opacity(0.85)))
             tablet.fill(Path(roundedRect: CGRect(x: -10, y: 77, width: 20, height: 4), cornerRadius: 1), with: .color(.red.opacity(0.75)))
-            guard settings.useMapping else { return }
+            if settings.hasManualArea && !settings.mappingEdited { return }
+            guard settings.rotation == 0 || settings.rotation == 180 || settings.useMapping else { return }
             // Match TabletMappingPreferences: screen aspect, edge margin, scale, then
             // shift toward the user's bottom edge in the chosen orientation.
             let oriented = surface.applying(transform).offsetBy(dx: size.width / 2, dy: size.height / 2)
+            if settings.rotation == 0 || settings.rotation == 180 {
+                let area = oriented.insetBy(dx: settings.horizontalSideMargin * oriented.width / 216.48,
+                                           dy: settings.horizontalTopBottomMargin * oriented.height / 137)
+                let path = Path(roundedRect: area, cornerRadius: 3)
+                context.fill(path, with: .color(.accentColor.opacity(0.28)))
+                context.stroke(path, with: .color(.accentColor), style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+                return
+            }
             let available = oriented.insetBy(dx: settings.edgeMargin * 75 / 137, dy: settings.edgeMargin * 75 / 137)
             var width = available.width, height = available.height
             let selected = settings.displays.filter { settings.allDisplays || settings.displayIds.contains($0.id) }

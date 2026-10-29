@@ -129,6 +129,13 @@ public sealed class TabletMappingPanel : Panel
             margin.Value = preferences?.EdgeMargin ?? 8;
         }
         finally { updating = false; }
+        UpdateAreaControls();
+    }
+
+    private void UpdateAreaControls()
+    {
+        bool vertical = orientation.SelectedIndex == 2;
+        size.Enabled = margin.Enabled = nearUser.Enabled = proportional.Enabled = vertical;
     }
 
     private void Apply()
@@ -146,6 +153,7 @@ public sealed class TabletMappingPanel : Panel
             PreserveProportions = proportional.Checked == true,
             EdgeMargin = (float)margin.Value
         };
+        UpdateAreaControls();
         settings.MappingPreferences = preferences;
         var displayArea = TabletMappingPreferences.DisplayArea(choices.Select(c => c.Display), preferences.DisplayIdentifiers);
         var tabletArea = preferences.TabletArea(tablet, displayArea);
@@ -158,7 +166,7 @@ public sealed class TabletMappingPanel : Panel
         settings.Tablet.X = tablet.Width / 2;
         settings.Tablet.Y = tablet.Height / 2;
         settings.Tablet.Area = tabletArea.Area;
-        settings.LockAspectRatio = preferences.PreserveProportions;
+        settings.LockAspectRatio = preferences.UsesComfortableArea && preferences.PreserveProportions;
         profile.BindingSettings.DisableAuxiliaryButtons = preferences.Rotation == 270;
     }
 

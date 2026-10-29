@@ -27,11 +27,16 @@ public sealed class BambooSettingsSnapshot
     public bool AccessibilityGranted { get; set; }
     public NativeDisplay[] Displays { get; set; } = [];
     public bool UseMapping { get; set; }
+    public bool HasManualArea { get; set; }
+    // Request-scoped edit intent; never persisted in the tablet profile.
+    public bool MappingEdited { get; set; }
     public bool AllDisplays { get; set; }
     public string[] DisplayIds { get; set; } = [];
     public int Rotation { get; set; }
     public double AreaScale { get; set; } = 0.85;
     public double EdgeMargin { get; set; } = 8;
+    public double HorizontalSideMargin { get; set; } = TabletMappingPreferences.DefaultHorizontalSideMargin;
+    public double HorizontalTopBottomMargin { get; set; } = TabletMappingPreferences.DefaultHorizontalTopBottomMargin;
     public bool NearUser { get; set; } = true;
     public bool Proportional { get; set; } = true;
     public bool TouchEnabled { get; set; } = true;
@@ -50,7 +55,7 @@ public sealed class BambooSettingsSnapshot
     private static readonly string[] FlagProperties = ["PointerAcceleration", "ScrollAcceleration", "NaturalScrolling", "ScrollInertia", "TapToClick", "TapToDrag", "PinchToZoom", "Rotate", "PageSwipes"];
     private static readonly string[] CommandProperties = ["TapAction", "TwoFingerTapAction", "SwipeRightAction", "SwipeLeftAction"];
 
-    public static BambooSettingsSnapshot FromProfile(Profile profile)
+    public static BambooSettingsSnapshot FromProfile(Profile profile, NativeDisplay[]? displays = null)
     {
         var touchStore = profile.Filters.FirstOrDefault(f => f?.Path == typeof(BambooTouchNavigation).FullName);
         var touch = new BambooTouchNavigation();
@@ -58,12 +63,15 @@ public sealed class BambooSettingsSnapshot
         var pen = new BambooPenStabilizer();
         profile.Filters.FirstOrDefault(f => f?.Path == typeof(BambooPenStabilizer).FullName)?.ApplySettings(pen);
         var mapping = profile.AbsoluteModeSettings?.MappingPreferences;
+        var selected = mapping?.DisplayIdentifiers ?? SelectedDisplays(profile, displays ?? []);
         return new()
         {
             Profile = profile.Tablet, ProfileToken=TokenFor(profile), HasProfile = true, TouchEnabled = touchStore?.Enable ?? false,
-            UseMapping = mapping != null, AllDisplays = mapping?.DisplayIdentifiers.Length == 0,
-            DisplayIds = mapping?.DisplayIdentifiers ?? [], Rotation = mapping?.Rotation ?? (int)(profile.AbsoluteModeSettings?.Tablet.Rotation ?? 0),
+            UseMapping = mapping?.UsesComfortableArea == true, HasManualArea = mapping == null, AllDisplays = mapping != null ? selected.Length == 0 : displays is { Length: > 0 } && selected.Length == displays.Length,
+            DisplayIds = selected, Displays = displays ?? [], Rotation = mapping?.Rotation ?? (int)(profile.AbsoluteModeSettings?.Tablet.Rotation ?? 0),
             AreaScale = mapping?.AreaScale ?? 0.85, EdgeMargin = mapping?.EdgeMargin ?? 8,
+            HorizontalSideMargin = mapping?.HorizontalSideMargin ?? TabletMappingPreferences.DefaultHorizontalSideMargin,
+            HorizontalTopBottomMargin = mapping?.HorizontalTopBottomMargin ?? TabletMappingPreferences.DefaultHorizontalTopBottomMargin,
             NearUser = mapping?.NearUser ?? true, Proportional = mapping?.PreserveProportions ?? true,
             Touch = NumberProperties.ToDictionary(p => p, p => Convert.ToDouble(typeof(BambooTouchNavigation).GetProperty(p)!.GetValue(touch))),
             Flags = FlagProperties.ToDictionary(p => p, p => (bool)typeof(BambooTouchNavigation).GetProperty(p)!.GetValue(touch)!),
@@ -74,6 +82,15 @@ public sealed class BambooSettingsSnapshot
             PenButtons = profile.BindingSettings.PenButtons.Select(BindingCommand).ToArray(),
             BodyButtons = profile.BindingSettings.AuxButtons.Select(BindingCommand).ToArray()
         };
+    }
+
+    private static string[] SelectedDisplays(Profile profile, NativeDisplay[] displays)
+    {
+        if (profile.AbsoluteModeSettings?.Display is not { } area) return [];
+        // Manual profiles have no stored monitor IDs. Recover the selection from their
+        // existing output rectangle rather than silently selecting every screen.
+        return displays.Where(d => d.X < area.X + area.Width / 2 && d.X + d.Width > area.X - area.Width / 2 &&
+            d.Y < area.Y + area.Height / 2 && d.Y + d.Height > area.Y - area.Height / 2).Select(d => d.Id).ToArray();
     }
 
     public void ApplyTo(Profile profile, DigitizerSpecifications digitizer)
@@ -89,12 +106,14 @@ public sealed class BambooSettingsSnapshot
         if (FlagProperties.Any(p => !Flags.ContainsKey(p)) || CommandProperties.Any(p => !Commands.TryGetValue(p, out int v) || !Enum.IsDefined((TouchCommand)v)))
             throw new ArgumentException("Incomplete gesture settings.");
         Validate(HoverSmoothing,0,80); Validate(ContactSmoothing,0,40); Validate(TipThreshold,0,100); Validate(EraserThreshold,0,100);
-        if (UseMapping)
+        bool applyMapping = MappingEdited || UseMapping || profile.AbsoluteModeSettings?.MappingPreferences != null;
+        if (applyMapping)
         {
             Validate(AreaScale,0.3,1); Validate(EdgeMargin,0,30);
+            Validate(HorizontalSideMargin,0,30); Validate(HorizontalTopBottomMargin,0,30);
             if (Rotation is not (0 or 180 or 270)) throw new ArgumentOutOfRangeException(nameof(Rotation));
         }
-        if (UseMapping && !AllDisplays && DisplayIds.Length == 0) throw new ArgumentException("Select at least one display.");
+        if (applyMapping && !AllDisplays && DisplayIds.Length == 0) throw new ArgumentException("Select at least one display.");
         if (PenButtons.Length != profile.BindingSettings.PenButtons.Count || BodyButtons.Length != profile.BindingSettings.AuxButtons.Count ||
             PenButtons.Concat(BodyButtons).Any(v => v != -1 && !Enum.IsDefined((TouchCommand)v))) throw new ArgumentException("Invalid button assignment.");
         var touch = GetOrAdd<BambooTouchNavigation>(profile);
@@ -112,17 +131,20 @@ public sealed class BambooSettingsSnapshot
         ApplyButtons(profile.BindingSettings.AuxButtons, BodyButtons);
         if (profile.AbsoluteModeSettings is { } absolute)
         {
-            absolute.MappingPreferences = UseMapping ? new TabletMappingPreferences
+            if (!applyMapping) return; // Unrelated edits preserve explicitly configured manual geometry.
+            absolute.MappingPreferences = new TabletMappingPreferences
             {
                 DisplayIdentifiers = AllDisplays ? [] : DisplayIds.Distinct().ToArray(), Rotation = Rotation,
+                UseComfortableArea = Rotation == 270 && UseMapping,
+                HorizontalSideMargin = (float)HorizontalSideMargin, HorizontalTopBottomMargin = (float)HorizontalTopBottomMargin,
                 AreaScale = (float)AreaScale, EdgeMargin = (float)EdgeMargin, NearUser = NearUser, PreserveProportions = Proportional
-            } : null;
+            };
             if (absolute.MappingPreferences is { } mapping)
             {
                 // Geometry is calculated by the shared profile model, not by the native view.
                 absolute.Display = TabletMappingPreferences.DisplayArea(Displays.Select(d => d.AsDisplay()), mapping.DisplayIdentifiers);
                 absolute.Tablet = mapping.TabletArea(digitizer, absolute.Display);
-                absolute.LockAspectRatio = Proportional;
+                absolute.LockAspectRatio = mapping.UsesComfortableArea && Proportional;
                 profile.BindingSettings.DisableAuxiliaryButtons = Rotation == 270;
             }
         }

@@ -84,11 +84,12 @@ public static class MacSettingsWindow
     private static BambooSettingsSnapshot Capture()
     {
         var profile=App.Current.Settings.Profiles.FirstOrDefault(p=>p.Tablet=="Wacom CTH-661");
-        var snapshot=profile==null ? new BambooSettingsSnapshot() : BambooSettingsSnapshot.FromProfile(profile);
+        var displays=ReadDisplays();
+        var snapshot=profile==null ? new BambooSettingsSnapshot() : BambooSettingsSnapshot.FromProfile(profile,displays);
         snapshot.SettingsToken=App.Current.SettingsToken;
         snapshot.Version=App.Version; snapshot.Language=Language.Selected;
         snapshot.Connected=owner?.BambooConnected==true && App.Driver.IsConnected;
-        snapshot.Displays=ReadDisplays();
+        snapshot.Displays=displays;
         snapshot.InputGranted=IOKit.IOHIDCheckAccess(IOHIDRequestType.kIOHIDRequestTypeListenEvent)==IOHIDAccessType.kIOHIDAccessTypeGranted;
         snapshot.AccessibilityGranted=ApplicationServices.AXIsProcessTrusted();
         return snapshot;
